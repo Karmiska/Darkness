@@ -1,0 +1,3 @@
+QWidget { background-color: #444444; font{color: red} }
+QDockWidget { color: #bec8ca }
+QMainWindow::separator { width: 2px; background-color: #2a2a2a };

@@ -1,0 +1,75 @@
+QWidget {
+    background-color: "#383838";
+}
+
+QLabel {
+    color: "#f1f1f1";
+    background: "#00000000";
+}
+
+QLineEdit {
+    border: 1px solid "#494949";
+    background: "#646464";
+    padding: 0 8px;
+    color: "#f1f1f1";
+}
+
+QTreeView {
+    color: "#f1f1f1";
+}
+
+QTreeView::branch:selected {
+    border: 1px solid #42d4c8;
+    background-color: #42d4c8;
+}
+
+QTreeView::item:selected {
+    border: 1px solid #42d4c8;
+    background-color: #42d4c8;
+}
+
+QListView {
+    color: "#f1f1f1";
+}
+
+QMenu::item {
+    color: "#f1f1f1"
+}
+
+QMenuBar {
+    color: "#f1f1f1"
+}
+
+QToolBar::handle::horizontal {
+    image: url(":/data/images/handle_horizontal.png");
+}
+
+QToolBar::handle::vertical {
+    image: url(":/data/images/handle_vertical.png");
+}
+
+QToolButton { /* all types of tool button */
+    border-radius: 3px;
+    padding: 1px
+}
+
+QToolButton:pressed {
+    border: 1px solid #000000;
+    border-radius: 3px;
+    background-color: #308bc2;
+    padding: 0px
+}
+
+QToolButton:checked {
+    border: 1px solid #000000;
+    border-radius: 3px;
+    background-color: #608bc2;
+    padding: 0px
+}
+
+QMainWindow::separator
+{
+    width: 4px;
+    background-color: "#383838"
+};
+

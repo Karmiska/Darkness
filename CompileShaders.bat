@@ -1,0 +1,1 @@
+darkness-shadercompiler\bin\win64\release\darknessshadercompiler.exe -optimization=release

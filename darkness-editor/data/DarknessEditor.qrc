@@ -1,0 +1,10 @@
+<RCC>
+    <qresource prefix="/data">
+        <file>DarknessEditor.qss</file>
+        <file>images/icon_move_24.png</file>
+        <file>images/icon_resize_24.png</file>
+        <file>images/icon_rotate_24.png</file>
+        <file>images/handle_vertical.png</file>
+        <file>images/handle_horizontal.png</file>
+    </qresource>
+</RCC>

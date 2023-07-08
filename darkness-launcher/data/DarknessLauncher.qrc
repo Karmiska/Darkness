@@ -1,0 +1,18 @@
+<RCC>
+    <qresource prefix="/">
+        <file>qml/main.qml</file>
+        <file>qml/Page1.qml</file>
+        <file>qml/Page1Form.ui.qml</file>
+        <file>qml/CreateProject.qml</file>
+        <file>qml/CreateProjectForm.ui.qml</file>
+        <file>qml/CreateProjectMain.qml</file>
+        <file>qml/fonts/Roboto-Thin.ttf</file>
+        <file>qml/images/project_open_light_24.png</file>
+        <file>qml/images/project_open_24.png</file>
+        <file>qml/images/project_add_light_24.png</file>
+        <file>qml/images/project_add_24.png</file>
+    </qresource>
+    <qresource prefix="/data">
+        <file>DarknessLauncher.qss</file>
+    </qresource>
+</RCC>

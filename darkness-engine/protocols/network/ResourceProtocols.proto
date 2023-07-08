@@ -1,0 +1,196 @@
+syntax = "proto3";
+
+/* These are for the communication between Editor (Resource Host)
+ * and one of the task processors (Resource Client) */
+
+message HostProcessorMessageType
+{
+    enum MessageType {
+        Invalid = 0;
+        CoreRequest = 1;
+        CoreResponse = 2;
+        TaskImageRequest = 3;
+        TaskImageResponse = 4;
+        TaskModelRequest = 5;
+        TaskModelResponse = 6;
+        TaskStarted = 7;
+        TaskFinished = 8;
+        TaskProgress = 9;
+        TaskProgressMessage = 10;
+        ShutdownProcessor = 11;
+    }
+    MessageType type = 1;
+}
+
+message HostCoreResponse
+{
+    uint32 cores = 1;
+}
+
+message HostTaskImageRequest
+{
+    string taskId = 1;
+    string extension = 2;
+    int32 format = 3;
+    bool generateMips = 4;
+	bool flipNormal = 5;
+	bool alphaClipped = 6;
+    bytes data = 7;
+}
+
+message HostTaskImageResponse
+{
+    string taskId = 1;
+    int32 width = 2;
+    int32 height = 3;
+    int32 mips = 4;
+    int32 format = 5;
+    bytes data = 6;
+}
+
+message HostTaskModelRequest
+{
+    string taskId = 1;
+
+    string modelTargetPath = 2;
+    string assetName = 3;
+
+    float scaleX = 4;
+    float scaleY = 5;
+    float scaleZ = 6;
+
+    float rotationX = 7;
+    float rotationY = 8;
+    float rotationZ = 9;
+    float rotationW = 10;
+
+    bytes data = 11;
+}
+
+message HostTaskModelResponse
+{
+    string taskId = 1;
+    bytes modelData = 2;
+    bytes prefabData = 3;
+}
+
+message HostTaskStarted
+{
+    string taskId = 1;
+}
+
+message HostTaskFinished
+{
+    string taskId = 1;
+}
+
+message HostTaskProgress
+{
+    string taskId = 1;
+    float progress = 2;
+}
+
+message HostTaskProgressMessage
+{
+    string taskId = 1;
+    float progress = 2;
+    string message = 3;
+}
+
+
+
+/* These are for the communication between Resource Client
+ * and one of the Resource Tasks */
+
+message ProcessorTaskMessageType
+{
+    enum MessageType {
+        Invalid = 0;
+        Helo = 1;
+        TaskRequest = 2;
+        TaskResponse = 3;
+        TaskProgress = 4;
+        TaskProgressMessage = 5;
+        DoneRequest = 6;
+        DoneResponse = 7;
+    }
+    MessageType type = 1;
+}
+
+message ProcessorTaskRequest
+{
+    enum TaskType {
+        Invalid = 0;
+        Image = 1;
+        Model = 2;
+    }
+    TaskType type = 1;
+}
+
+message ProcessorTaskImageRequest
+{
+    string taskId = 1;
+    int32 sourceCMformat = 2;
+    int32 targetCMBCformat = 3;
+    int32 enginePackedFormat = 4;
+    int32 width = 5;
+    int32 height = 6;
+    int32 stride = 7;
+	int32 mipCount = 8;
+	int32 mip = 9;
+	int32 partId = 10;
+	int32 partSize = 11;
+    bytes data = 12;
+}
+
+message ProcessorTaskImageResponse
+{
+    string taskId = 1;
+    int32 width = 2;
+    int32 height = 3;
+    int32 format = 4;
+	int32 mipCount = 5;
+	int32 mip = 6;
+	int32 partId = 7;
+	int32 partSize = 8;
+    bytes data = 9;
+}
+
+message ProcessorTaskProgress
+{
+    string taskId = 1;
+    float progress = 2;
+}
+
+message ProcessorTaskMessageProgress
+{
+    string taskId = 1;
+    float progress = 2;
+    string message = 3;
+}
+
+message ProcessorTaskModelRequest
+{
+    string taskId = 1;
+    
+    string modelTargetPath = 2;
+    string assetName = 3;
+
+    float scaleX = 4;
+    float scaleY = 5;
+    float scaleZ = 6;
+
+    float rotationX = 7;
+    float rotationY = 8;
+    float rotationZ = 9;
+    float rotationW = 10;
+
+    bytes modelData = 11;
+}
+
+message ProcessorTaskModelResponse
+{
+    string taskId = 1;
+    bytes modelData = 2;
+    bytes prefabData = 3;
+}

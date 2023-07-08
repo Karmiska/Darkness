@@ -1,0 +1,17 @@
+{
+    "groupName": "root",
+    "childs": [
+        {
+            "groupName": "horizontalLayout",
+            "float": [
+                {
+                    "0": 0.4211764633655548
+                },
+                {
+                    "1": 0.5788235068321228
+                }
+            ],
+            "childs": []
+        }
+    ]
+}

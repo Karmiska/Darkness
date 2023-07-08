@@ -1,0 +1,44 @@
+{
+    "groupName": "root",
+    "childs": [
+        {
+            "groupName": "verticalMenuMainLayout",
+            "float": [
+                {
+                    "0": -1.0
+                },
+                {
+                    "1": 1.0
+                }
+            ],
+            "childs": []
+        },
+        {
+            "groupName": "verticalMainLayout",
+            "float": [
+                {
+                    "0": 0.7179999947547913
+                },
+                {
+                    "1": 0.28200000524520874
+                }
+            ],
+            "childs": []
+        },
+        {
+            "groupName": "horizontalTopLayout",
+            "float": [
+                {
+                    "0": 0.14632238447666168
+                },
+                {
+                    "1": 0.7480438351631165
+                },
+                {
+                    "2": 0.10563380271196365
+                }
+            ],
+            "childs": []
+        }
+    ]
+}

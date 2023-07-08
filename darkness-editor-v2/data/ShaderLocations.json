@@ -1,0 +1,19 @@
+{
+    "groupName": "root",
+    "float": [],
+  "string": [
+    {
+        "rootShaderPath": "$DATA_ROOT\\..\\..\\darkness-engine\\data\\shaders"
+    },
+    {
+        "apiShaderPathDX12": "dx12"
+    },
+    {
+        "apiShaderPathVulkan": "vulkan"
+    },
+    {
+        "coreShaderPath": "core"
+    }
+  ],
+    "childs": []
+}

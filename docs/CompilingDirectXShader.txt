@@ -1,0 +1,1 @@
+hctbuild -Release -spirv

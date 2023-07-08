@@ -1,0 +1,1 @@
+python.exe %~dp0darkness-engine\tools\codegen\ShaderBuild.py -g dx12 -DRELEASE -m release

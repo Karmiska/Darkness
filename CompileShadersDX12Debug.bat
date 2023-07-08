@@ -1,0 +1,1 @@
+C:\Python27\python.exe %~dp0darkness-engine\tools\codegen\ShaderBuild.py -g dx12 -DDEBUG -m debug

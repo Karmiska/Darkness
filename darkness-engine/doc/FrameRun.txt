@@ -1,0 +1,113 @@
+
+
+Engine::render()
+
+    Scene::flatten(simulating)
+
+    foreach(Scene::nodes)
+        MeshRendererComponent::cpuRefresh
+        MeshRendererComponent::gpuRefresh
+    foreach(Scene::alphaclippedNodes)
+        MeshRendererComponent::cpuRefresh
+        MeshRendererComponent::gpuRefresh
+
+    InputManager::setCamera
+
+    Camera::cpuRefresh
+    Camera::gpuRefresh
+
+    InputManager::update
+
+    // create command list
+
+    auto cmd = device.createCommandList
+
+        ModelResources::streamResources(cmd)
+
+        cmd.clearRenderTargetView(currentRTV)
+
+        ImguiRenderer::startFrame
+
+        updateEnvironmentCubemap
+
+        updateProbes
+
+        updateLighting
+
+        ViewportRenderer::render
+
+            clearRenderTargetView(m_rtv)
+
+            ShadowRenderer::refresh
+            ShadowRenderer::render
+
+            RenderCubemap::render
+
+            ModelRenderer::render
+
+                DepthPyramid::performDownsample
+
+                Culler::frustumCull
+
+                    setup
+                        subMeshBoundingBoxes
+                        instanceSubMeshBinding
+                        subMeshData
+                        transformHistory
+                        cullingOutput
+                        clusterCountBuffer
+                        outputAllocationShared
+                        instanceCount
+
+                        dispatch(instanceCount)
+
+                Culler::occlusionCull
+
+                    create indirect arguments
+                    gather clusters
+
+                    dispatchIndirect(occlusion culling dispatch args)
+
+                GBuffer::clear
+
+                clearDepthStencilView(depthPyramid.dsv)
+
+                renderEarlyZ
+
+                ClusterRenderer::render
+
+                    setRenderTargets(normal, uv, motion, instanceid, depth)
+                    setup gpuBuffers (vertex, normal, tangent, uv, index, clusterBinding, instanceTransform, instanceUV, instanceMaterial, textures)
+                    drawIndirect
+
+                Picker::pick
+
+                renderSSAO
+
+                renderLighting
+
+                renderWireframe
+
+                RenderOutline::render
+
+                renderTemporalResolve
+
+            Postprocess::render
+
+        renderDebugView
+
+        LogWindow::render
+
+        DebugMenu::render
+
+        ImguiRenderer::render
+
+        ImguiRenderer::endFrame
+
+        Cycle Transforms
+
+    RenderSetup::submit(cmd)
+    RenderSetup::present()
+
+    Window::processMessages
+

@@ -1,0 +1,179 @@
+{
+    "groupName": "root",
+    "float": [
+        {
+            "frame_backgroundColor_b": 0.14900000393390656
+        },
+        {
+            "frame_backgroundColor_r": 0.14100000262260438
+        },
+        {
+            "frame_backgroundColor_g": 0.14499999582767487
+        },
+        {
+            "frame_backgroundColor_a": 1.0
+        },
+        {
+            "application_backgroundColor_b": 0.14900000393390656
+        },
+        {
+            "application_backgroundColor_r": 0.14100000262260438
+        },
+        {
+            "application_backgroundColor_g": 0.14499999582767487
+        },
+        {
+            "application_backgroundColor_a": 1.0
+        },
+        {
+            "mainmenu_backgroundColor_r": 0.2549999952316284
+        },
+        {
+            "mainmenu_backgroundColor_g": 0.2630000114440918
+        },
+        {
+            "mainmenu_backgroundColor_b": 0.2709999978542328
+        },
+        {
+            "mainmenu_backgroundColor_a": 1.0
+        },
+        {
+            "button_backgroundColor_r": 0.2549999952316284
+        },
+        {
+            "button_backgroundColor_g": 0.2630000114440918
+        },
+        {
+            "button_backgroundColor_b": 0.2709999978542328
+        },
+        {
+            "button_backgroundColor_a": 1.0
+        },
+        {
+            "scrollbar_backgroundColor_r": 0.16500000655651093
+        },
+        {
+            "scrollbar_backgroundColor_g": 0.16099999845027924
+        },
+        {
+            "scrollbar_backgroundColor_b": 0.16099999845027924
+        },
+        {
+            "scrollbar_backgroundColor_a": 1.0
+        }
+    ],
+    "string": [
+        {
+            "tab_middleLeft": "$DATA_ROOT\\tab_middleLeft.png"
+        },
+        {
+            "scroll_handle_middleRight": "$DATA_ROOT\\scroll_handle_middleRight.png"
+        },
+        {
+            "tab_middleCenter": "$DATA_ROOT\\tab_middleCenter.png"
+        },
+        {
+            "tab_middleRight": "$DATA_ROOT\\tab_middleRight.png"
+        },
+        {
+            "tab_topRight": "$DATA_ROOT\\tab_topRightCorner.png"
+        },
+        {
+            "tab_topCenter": "$DATA_ROOT\\tab_topCenter.png"
+        },
+        {
+            "scroll_handle_hover_bottomCenter": "$DATA_ROOT\\scroll_handle_hover_bottomCenter.png"
+        },
+        {
+            "tab_topLeft": "$DATA_ROOT\\tab_topLeftCorner.png"
+        },
+        {
+            "frame_topCenter": "$DATA_ROOT\\frame_topCenter.png"
+        },
+        {
+            "frame_topLeft": "$DATA_ROOT\\frame_topLeftCorner.png"
+        },
+        {
+            "frame_topRight": "$DATA_ROOT\\frame_topRightCorner.png"
+        },
+        {
+            "tab_bottomLeft": ""
+        },
+        {
+            "frame_middleLeft": "$DATA_ROOT\\frame_middleLeft.png"
+        },
+        {
+            "tab_bottomCenter": ""
+        },
+        {
+            "frame_middleCenter": "$DATA_ROOT\\frame_middleCenter.png"
+        },
+        {
+            "tab_bottomRight": ""
+        },
+        {
+            "scroll_handle_middleCenter": "$DATA_ROOT\\scroll_handle_middleCenter.png"
+        },
+        {
+            "frame_middleRight": "$DATA_ROOT\\frame_middleRight.png"
+        },
+        {
+            "frame_bottomLeft": "$DATA_ROOT\\frame_bottomLeftCorner.png"
+        },
+        {
+            "frame_bottomCenter": "$DATA_ROOT\\frame_bottomCenter.png"
+        },
+        {
+            "frame_bottomRight": "$DATA_ROOT\\frame_bottomRightCorner.png"
+        },
+        {
+            "scroll_handle_topLeft": "$DATA_ROOT\\scroll_handle_topLeftCorner.png"
+        },
+        {
+            "scroll_handle_topCenter": "$DATA_ROOT\\scroll_handle_topCenter.png"
+        },
+        {
+            "scroll_handle_topRight": "$DATA_ROOT\\scroll_handle_topRightCorner.png"
+        },
+        {
+            "scroll_handle_middleLeft": "$DATA_ROOT\\scroll_handle_middleLeft.png"
+        },
+        {
+            "scroll_handle_bottomLeft": "$DATA_ROOT\\scroll_handle_bottomLeftCorner.png"
+        },
+        {
+            "scroll_handle_bottomCenter": "$DATA_ROOT\\scroll_handle_bottomCenter.png"
+        },
+        {
+            "scroll_handle_bottomRight": "$DATA_ROOT\\scroll_handle_bottomRightCorner.png"
+        },
+        {
+            "scroll_handle_hover_topLeft": "$DATA_ROOT\\scroll_handle_hover_topLeftCorner.png"
+        },
+        {
+            "scroll_handle_hover_topCenter": "$DATA_ROOT\\scroll_handle_hover_topCenter.png"
+        },
+        {
+            "scroll_handle_hover_topRight": "$DATA_ROOT\\scroll_handle_hover_topRightCorner.png"
+        },
+        {
+            "scroll_handle_hover_middleLeft": "$DATA_ROOT\\scroll_handle_hover_middleLeft.png"
+        },
+        {
+            "scroll_handle_hover_middleCenter": "$DATA_ROOT\\scroll_handle_hover_middleCenter.png"
+        },
+        {
+            "scroll_handle_hover_middleRight": "$DATA_ROOT\\scroll_handle_hover_middleRight.png"
+        },
+        {
+            "scroll_handle_hover_bottomLeft": "$DATA_ROOT\\scroll_handle_hover_bottomLeftCorner.png"
+        },
+        {
+            "scroll_handle_hover_bottomRight": "$DATA_ROOT\\scroll_handle_hover_bottomRightCorner.png"
+        },
+        {
+            "folder_icon": "$DATA_ROOT\\folder.png"
+        }
+    ],
+    "childs": []
+}

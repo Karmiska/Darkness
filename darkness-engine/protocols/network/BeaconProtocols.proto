@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+message BeaconHello
+{
+    string ip = 1;
+    string id = 2;
+    enum BeaconType {
+        Server = 0;
+        Client = 1;
+    }
+    BeaconType type = 3;
+    enum BeaconAction {
+        Entering = 0;
+        Leaving = 1;
+        Alive = 2;
+    }
+    BeaconAction action = 4;
+}

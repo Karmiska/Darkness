@@ -1,0 +1,29 @@
+DXT1 (1 bit alpha)		BC1	color
+
+DXT2 (premultiplied alpha)	BC2	
+DXT3 (alpha)			BC2	
+
+DXT4 (premultiplied alpha)	BC3
+DXT5 (alpha)			BC3
+
+				BC4	AO, Metalness, specular, roughness
+
+3Dc				BC5	NORMAL MAPS
+
+				BC7	color
+
+
+
+BC1	8 bytes / block		Color data. limited alpha support (1 bit)
+				Could in theory be used for normal maps if quality wont be an issue
+				and we want to save bandwidth
+
+BC4	8 bytes / block		Grayscale data. AO, Metalness, specular, roughness.
+
+BC3	16 bytes / block	BC1 (rgb color) + BC4 (alpha). Color data + full alpha
+
+BC5	16 bytes / block	X, Y components. Tangent space normal maps (z reconstructed)
+
+BC6	16 bytes / block	RGB half precision floating point. HDR.
+
+BC7	16 bytes / block	RGB/RGBA 8-bit.

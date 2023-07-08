@@ -1,0 +1,20 @@
+
+winding order 	= CCW (Counter Clock Wise) (same as OBJ files)
+handedness	= right handed = +X right, +Y up, +Z towards camera (towards viewer)
+inverse Z	= near 1.0, far 0.0
+matrix major	= row major (same as direct X)
+
+
+
+
+clip space on dx12	= +X right, +Y up, +Z away from camera (towards far 0.0)
+speculation: how ever with inversed Z, +Z actually comes towards the viewer and
+this seems to be currently the case
+
+
+row major transformation matrix
+
+[xAxis.x, xAxis.y, xAxis.z, Translation.x]
+[yAxis.x, yAxis.y, yAxis.z, Translation.y]
+[zAxis.x, zAxis.y, zAxis.z, Translation.z]
+[      0,	0, 	 0, 		1]
