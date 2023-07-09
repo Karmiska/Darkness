@@ -1,6 +1,6 @@
 @echo off
 echo Compile Sharpmake
-MSBuild tools\Sharpmake\Sharpmake.sln /property:Configuration=Release /p:Platform="Any CPU"
+echo MSBuild tools\Sharpmake\Sharpmake.sln /property:Configuration=Release /p:Platform="Any CPU"
 echo Generate Solution
 %~dp0tools\Sharpmake\Sharpmake.Application\bin\Release\net6.0\Sharpmake.Application.exe "/sources(@'%~dp0main.sharpmake.cs')
 echo Compile ShaderCompiler

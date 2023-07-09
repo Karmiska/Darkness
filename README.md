@@ -32,4 +32,15 @@ Screen space ambient occlusion.</p>
 
 <p>This project is likely never going to be finished nor production quality. It is only a tool for me to study the subject.</p>
 
-<p>Building it, while possible, is going to take considerable setup since only the source is available here. There are numerous external project requirements which are not included here. Reason for this is simply the sheer size of the project.</p>
+<p>Building it.</p>
+
+<p>- pull the latest version</p>
+<p>- download the externals package from here: https://drive.google.com/file/d/1XFZp6AO2Q2x2dW24wWxyYK4750MU0Ds2/view?usp=sharing </p>
+<p>- and unzip it under the main darkness folders</p>
+<p>- build sharpmake with visual studio. Solution file is under: tools\Sharpmake\Sharpmake.sln
+<p>- open Visual studio Command prompt (x64 Native Tools Command Prompt for VS 2022)</p>
+<p>- in the darkness root folder. execute (twice): GenerateSolutions.bat</p>
+<p>- open ide\vs2022\darkness.vs.2022.sln. and build release and/or debug</p>
+<p>- DarknessEditorV2 and DarknessGame are currently runnable</p>
+
+Good luck.
