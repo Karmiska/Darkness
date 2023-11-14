@@ -12,13 +12,28 @@ namespace ecs
 
     using EntityId = uint64_t;
 
-    uint64_t entityIndexFromEntityId(EntityId id);
-    uint64_t chunkIndexFromEntityId(EntityId id);
-    ComponentArcheTypeId archeTypeIdFromEntityId(EntityId id);
-    EntityId createEntityId(
+    inline uint64_t entityIndexFromEntityId(EntityId id)
+    {
+        return (id & EntityIdEntityMask);
+    };
+
+    inline uint64_t chunkIndexFromEntityId(EntityId id)
+    {
+        return (id & EntityIdChunkMask) >> 16;
+    };
+
+    inline ComponentArcheTypeId archeTypeIdFromEntityId(EntityId id)
+    {
+        return (id & EntityIdArcheTypeMask) >> 40;
+    };
+
+    inline EntityId createEntityId(
         uint64_t index,
         uint64_t chunkIndex,
-        ComponentArcheTypeId archeType);
+        ComponentArcheTypeId archeType)
+    {
+        return (archeType << 40) | (chunkIndex << 16) | index;
+    };
 
     class Ecs;
     class Entity
@@ -69,5 +84,8 @@ namespace ecs
                     return false;
             return true;
         }
+
+        bool operator==(const Entity& entity) { return entityId == entity.entityId; }
+        bool operator!=(const Entity& entity) { return entityId != entity.entityId; }
     };
 }

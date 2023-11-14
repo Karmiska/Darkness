@@ -3,6 +3,8 @@
 #include "containers/vector.h"
 #include "containers/unordered_map.h"
 #include "TypeSort.h"
+#include "EcsShared.h"
+#include "ArcheTypeStorage.h"
 #include "tools/Debug.h"
 
 #include <typeinfo>
@@ -14,43 +16,6 @@
 
 namespace ecs
 {
-    using ComponentTypeId = uint64_t;
-    using ComponentArcheTypeId = uint64_t;
-    const ComponentTypeId InvalidTypeId = std::numeric_limits<uint64_t>::max();
-    const ComponentArcheTypeId InvalidArcheTypeId = 0xffffff;
-    const ComponentArcheTypeId EmptyArcheTypeId = 0x0;
-    static ComponentTypeId GlobalComponentTypeId = 0;
-    //static ComponentArcheTypeId GlobalArcheTypeId = 0;
-
-    template<typename T>
-    class ComponentTypeContainer
-    {};
-
-    constexpr uint64_t FnvPrime = 1099511628211u;
-    constexpr uint64_t FnvOffsetBasis = 14695981039346656037u;
-    constexpr uint64_t fnv1aHash(uint64_t value, uint64_t hash = FnvOffsetBasis);
-    constexpr uint64_t fnv1aHash(uint64_t value, uint64_t hash)
-    {
-        hash ^= (value & 0xff);
-        hash *= FnvPrime;
-        hash ^= (value & 0xff00) >> 8;
-        hash *= FnvPrime;
-        hash ^= (value & 0xff0000) >> 16;
-        hash *= FnvPrime;
-        hash ^= (value & 0xff000000) >> 24;
-        hash *= FnvPrime;
-
-        hash ^= (value & 0xff00000000) >> 32;
-        hash *= FnvPrime;
-        hash ^= (value & 0xff0000000000) >> 40;
-        hash *= FnvPrime;
-        hash ^= (value & 0xff000000000000) >> 48;
-        hash *= FnvPrime;
-        hash ^= (value & 0xff00000000000000) >> 56;
-        hash *= FnvPrime;
-        return hash;
-    }
-
     class ComponentDataBase
     {
     public:
@@ -73,105 +38,6 @@ namespace ecs
         }
     private:
         engine::vector<T> m_data;
-    };
-
-    uint64_t ArcheTypeHash(const std::set<ComponentTypeId>& types);
-
-    class ArcheTypeStorage
-    {
-    public:
-        using HashType = uint64_t;
-    public:
-        ArcheTypeStorage()
-            : m_currentArcheTypeId{ 1 }
-        {
-            m_archeTypeMap[ArcheTypeHash({})] = ArcheTypeContainer{ EmptyArcheTypeId, {} };
-            m_archeTypeIdToContainer.emplace_back(ArcheTypeContainer{ EmptyArcheTypeId, {} });
-        }
-
-        static ArcheTypeStorage& instance()
-        {
-            static ArcheTypeStorage archeTypeStorage;
-            return archeTypeStorage;
-        }
-
-        ComponentArcheTypeId archeTypeIdFromHash(HashType hash)
-        {
-            auto found = m_archeTypeMap.find(hash);
-            if (found != m_archeTypeMap.end())
-                return found->second.id;
-            return InvalidArcheTypeId;
-        }
-
-        ComponentArcheTypeId archeTypeIdFromHash(const std::set<ComponentTypeId>& types, HashType hash)
-        {
-            auto found = m_archeTypeMap.find(hash);
-            if (found != m_archeTypeMap.end())
-                return found->second.id;
-            else
-            {
-                ComponentArcheTypeId res = m_currentArcheTypeId++;
-                m_archeTypeMap[hash] = ArcheTypeContainer{ res, types };
-                if (m_archeTypeIdToContainer.size() <= res)
-                    m_archeTypeIdToContainer.resize(res + 1);
-                m_archeTypeIdToContainer[res] = ArcheTypeContainer{ res, types };
-                return res;
-            }
-        }
-
-        const std::set<ComponentTypeId>& typeSetFromArcheTypeId(ComponentArcheTypeId id)
-        {
-            ASSERT(id < m_archeTypeIdToContainer.size(), "Unknown ArcheTypeId!");
-            return m_archeTypeIdToContainer[id].typeSet;
-        }
-    private:
-        ComponentArcheTypeId m_currentArcheTypeId;
-        struct ArcheTypeContainer
-        {
-            ComponentArcheTypeId id;
-            std::set<ComponentTypeId> typeSet;
-        };
-        engine::unordered_map<HashType, ArcheTypeContainer> m_archeTypeMap;
-        engine::vector<ArcheTypeContainer> m_archeTypeIdToContainer;
-    };
-
-    class ArcheType
-    {
-    public:
-        ArcheType()
-            : m_id{ InvalidArcheTypeId }
-            , m_typeSet{}
-        {}
-
-        ArcheType(const std::set<ComponentTypeId>& types)
-            : m_id{ ArcheTypeStorage::instance().archeTypeIdFromHash(types, ArcheTypeHash(types)) }
-            , m_typeSet{ types }
-        {
-        }
-
-        ArcheType(ComponentArcheTypeId id)
-            : m_id{ id }
-            , m_typeSet{ ArcheTypeStorage::instance().typeSetFromArcheTypeId(id) }
-        {
-        }
-
-        ComponentArcheTypeId id() const
-        {
-            return m_id;
-        }
-
-        std::set<ComponentTypeId>& typeSet()
-        {
-            return m_typeSet;
-        }
-        const std::set<ComponentTypeId>& typeSet() const
-        {
-            return m_typeSet;
-        }
-
-    private:
-        ComponentArcheTypeId m_id;
-        std::set<ComponentTypeId> m_typeSet;
     };
 
     class ComponentTypeStorage
@@ -205,11 +71,6 @@ namespace ecs
                 ComponentTypeStorage::instance().m_typeInfoStorage,
                 sizeof(T));
             return typeInfo.id;
-        }
-
-        static ArcheType archeTypeId(const std::set<ComponentTypeId>& types)
-        {
-            return ArcheType(types);
         }
 
 #ifdef STATIC_ARCHETYPE_IMPL

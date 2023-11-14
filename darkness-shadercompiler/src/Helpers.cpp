@@ -87,10 +87,6 @@ namespace shadercompiler
 
         if (different)
         {
-            // remove the old one
-            if (engine::fileExists(targetPath))
-                engine::fileDelete(targetPath);
-
             // rename the new one
             //engine::fileRename(temporaryPath, targetPath);
             engine::fileCopy(temporaryPath, targetPath);

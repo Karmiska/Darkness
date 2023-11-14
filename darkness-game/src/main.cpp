@@ -1,4 +1,4 @@
-#undef ECSTEST2
+#define ECSTEST2
 
 #ifndef ECSTEST2
 #include "AllocatorHooks.h"
@@ -17,7 +17,7 @@ using namespace application;
 #include <cmath>
 
 //constexpr size_t DataCount = 100'000'000;
-constexpr size_t DataCount = 100;
+constexpr size_t DataCount = 10'000'000;
 
 #include "engine/Ecs.h"
 #include "ecs/Ecs.h"
@@ -373,6 +373,15 @@ int doWork()
 			entity.addComponent<A>();
 			entity.addComponent<B>();
 		}
+
+		//for (int i = 0; i < DataCount; ++i)
+		//{
+		//	auto entity = ecs.createEntity();
+		//	entity.addComponent<A>();
+		//	entity.addComponent<B>();
+		//	entity.addComponent<EcsTransform>();
+		//	entity.addComponent<EcsRigidBody>();
+		//}
 		//ecs.refreshTypeAllocations<EcsTransform, EcsRigidBody, A, B>();
 
 		LARGE_INTEGER populated;
@@ -397,6 +406,8 @@ int doWork()
 #ifdef CALLCHECK
 		LOG("Called: %i times", called.load());
 #endif
+
+		LOG("Testing with: %zu entities", DataCount);
 
 		LARGE_INTEGER measure;
 		measure.QuadPart = populated.QuadPart - start.QuadPart;

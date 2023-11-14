@@ -94,7 +94,6 @@ namespace engine
 			entity.addComponent<EcsTransform>();
 			entity.addComponent<EcsRigidBody>();
 		}
-		m_ecs.refreshTypeAllocations<EcsTransform, EcsRigidBody>();
 
 		DepthStencilOpDescription front;
 		front.StencilFailOp = StencilOp::Keep;
@@ -127,27 +126,28 @@ namespace engine
 		const Matrix4f& jitterViewProjection)
 	{
 #ifdef ECSTEST22
-		uint32_t numObjects = 0;
+		uint32_t numObjects = 3000000;
 		{
 			CPU_MARKER(cmd.api(), "Simulate ECS entities");
 			GravityWell gravityWell;
 			m_ecs.query([&gravityWell](EcsTransform& transform, EcsRigidBody& rigidBody)
 			{
-				EcsTransform* ptrA = &transform;
-				EcsRigidBody* ptrB = &rigidBody;
-
-				for (int i = 0; i < VectorizationSize; ++i)
-				{
-					ptrB->simulate(gravityWell, *ptrA, 1000.0f / 60.0f);
-					++ptrA;
-					++ptrB;
-				}
-				//rigidBody.simulate(gravityWell, transform, 1000.0f / 60.0f);
+				//EcsTransform* ptrA = &transform;
+				//EcsRigidBody* ptrB = &rigidBody;
+				//
+				//for (int i = 0; i < VectorizationSize; ++i)
+				//{
+				//	ptrB->simulate(gravityWell, *ptrA, 1000.0f / 60.0f);
+				//	++ptrA;
+				//	++ptrB;
+				//}
+				rigidBody.simulate(gravityWell, transform, 1000.0f / 60.0f);
 			});
 
-			auto& transformSystem = m_ecs.system<EcsTransform>();
-			numObjects = static_cast<uint32_t>(transformSystem.size());
-			memcpy(m_ecsTransformData, transformSystem.data(), sizeof(EcsTransform) * numObjects);
+			//auto& transformSystem = m_ecs.system<EcsTransform>();
+			//numObjects = static_cast<uint32_t>(transformSystem.size());
+			//memcpy(m_ecsTransformData, transformSystem.data(), sizeof(EcsTransform) * numObjects);
+			m_ecs.copyRaw<EcsTransform>(reinterpret_cast<EcsTransform*>(m_ecsTransformData), numObjects);
 		}
 		{
 			CPU_MARKER(cmd.api(), "Render ECS demo");

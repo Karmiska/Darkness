@@ -12,9 +12,13 @@ namespace engine
         return file.good();
     }
 
-    bool fileCopy(const engine::string& src, const engine::string& dst)
+    bool fileCopy(const engine::string& src, const engine::string& dst, bool overWriteIfExists)
     {
-        std::filesystem::copy(src.c_str(), dst.c_str());
+
+        std::filesystem::copy(src.c_str(), dst.c_str(), 
+            overWriteIfExists ?
+            std::filesystem::copy_options::overwrite_existing :
+            std::filesystem::copy_options::none);
         return true;
     }
 

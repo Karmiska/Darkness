@@ -88,6 +88,7 @@ public class DarknessEngine : DarknessStaticLibrary
         {
             //excludedFolders.Add("vulkan");
             conf.Defines.Add("GRAPHICS_API_DX12");
+            conf.Defines.Add("USE_DMLX=0");
             conf.AddPublicDependency<Directx>(target);
             conf.AddPublicDependency<WinPIXEventRuntime>(target);
             conf.Defines.Add("USE_PIX");

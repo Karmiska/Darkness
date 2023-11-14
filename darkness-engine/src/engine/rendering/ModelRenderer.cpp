@@ -604,6 +604,7 @@ namespace engine
 						m_virtualResolutionImguiChanged = true;
 					}
 					ImGui::EndChild();
+                    ImGui::TreePop();
 				}
 				if (ImGui::TreeNode("Rendering"))
 				{

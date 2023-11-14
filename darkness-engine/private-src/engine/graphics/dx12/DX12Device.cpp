@@ -20,6 +20,12 @@
 
 #include "platform/window/Window.h"
 
+#include <array>
+
+#define DML_TARGET_VERSION_USE_LATEST
+#include <DirectML.h> // The DirectML header from the Windows SDK.
+//#include <DirectMLX.h>
+
 using namespace tools;
 
 #undef PERFORMANCE_MEASURING_MODE
@@ -257,6 +263,333 @@ namespace engine
 
             m_currentFenceValue = m_graphicsQueueUploadFence->currentCPUValue();
             m_currentCopyFenceValue = m_copyQueueUploadFence->currentCPUValue();
+
+#if 0
+            DML_CREATE_DEVICE_FLAGS dmlCreateDeviceFlags = DML_CREATE_DEVICE_FLAG_NONE;
+#if defined (_DEBUG)
+            // If the project is in a debug build, then enable debugging via DirectML debug layers with this flag.
+            dmlCreateDeviceFlags |= DML_CREATE_DEVICE_FLAG_DEBUG;
+#endif
+
+            tools::ComPtr<IDMLDevice> dmlDevice;
+            auto res = DMLCreateDevice(
+                m_device.Get(),
+                dmlCreateDeviceFlags,
+                DARKNESS_IID_PPV_ARGS(dmlDevice.GetAddressOf()));
+
+            constexpr UINT tensorSizes[4] = { 1, 2, 3, 4 };
+            constexpr UINT tensorElementCount = tensorSizes[0] * tensorSizes[1] * tensorSizes[2] * tensorSizes[3];
+
+            auto DMLCalcBufferTensorSize = [](
+                DML_TENSOR_DATA_TYPE dataType, 
+                UINT dimensionCount,
+                const UINT* sizes, const UINT* strides)->UINT64
+            {
+                UINT elementSizeInBytes = 0;
+                switch (dataType)
+                {
+                case DML_TENSOR_DATA_TYPE_FLOAT32:
+                case DML_TENSOR_DATA_TYPE_UINT32:
+                case DML_TENSOR_DATA_TYPE_INT32:
+                    elementSizeInBytes = 4;
+                    break;
+
+                case DML_TENSOR_DATA_TYPE_FLOAT16:
+                case DML_TENSOR_DATA_TYPE_UINT16:
+                case DML_TENSOR_DATA_TYPE_INT16:
+                    elementSizeInBytes = 2;
+                    break;
+
+                case DML_TENSOR_DATA_TYPE_UINT8:
+                case DML_TENSOR_DATA_TYPE_INT8:
+                    elementSizeInBytes = 1;
+                    break;
+
+                case DML_TENSOR_DATA_TYPE_FLOAT64:
+                case DML_TENSOR_DATA_TYPE_UINT64:
+                case DML_TENSOR_DATA_TYPE_INT64:
+                    elementSizeInBytes = 8;
+                    break;
+
+                default:
+                    return 0; // Invalid data type
+                }
+
+                UINT64 minimumImpliedSizeInBytes = 0;
+                if (!strides)
+                {
+                    minimumImpliedSizeInBytes = sizes[0];
+                    for (UINT i = 1; i < dimensionCount; ++i)
+                    {
+                        minimumImpliedSizeInBytes *= sizes[i];
+                    }
+                    minimumImpliedSizeInBytes *= elementSizeInBytes;
+                }
+                else
+                {
+                    UINT indexOfLastElement = 0;
+                    for (UINT i = 0; i < dimensionCount; ++i)
+                    {
+                        indexOfLastElement += (sizes[i] - 1) * strides[i];
+                    }
+
+                    minimumImpliedSizeInBytes = (static_cast<UINT64>(indexOfLastElement) + 1) * elementSizeInBytes;
+                }
+
+                // Round up to the nearest 4 bytes.
+                minimumImpliedSizeInBytes = (minimumImpliedSizeInBytes + 3) & ~3ull;
+
+                return minimumImpliedSizeInBytes;
+            };
+
+            DML_BUFFER_TENSOR_DESC dmlBufferTensorDesc = {};
+            dmlBufferTensorDesc.DataType = DML_TENSOR_DATA_TYPE_FLOAT32;
+            dmlBufferTensorDesc.Flags = DML_TENSOR_FLAG_NONE;
+            dmlBufferTensorDesc.DimensionCount = ARRAYSIZE(tensorSizes);
+            dmlBufferTensorDesc.Sizes = tensorSizes;
+            dmlBufferTensorDesc.Strides = nullptr;
+            dmlBufferTensorDesc.TotalTensorSizeInBytes = DMLCalcBufferTensorSize(
+                dmlBufferTensorDesc.DataType,
+                dmlBufferTensorDesc.DimensionCount,
+                dmlBufferTensorDesc.Sizes,
+                dmlBufferTensorDesc.Strides);
+
+            tools::ComPtr<IDMLOperator> dmlOperator;
+            {
+                // Create DirectML operator(s). Operators represent abstract functions such as "multiply", "reduce", "convolution", or even
+                // compound operations such as recurrent neural nets. This example creates an instance of the Identity operator,
+                // which applies the function f(x) = x for all elements in a tensor.
+
+                DML_TENSOR_DESC dmlTensorDesc{};
+                dmlTensorDesc.Type = DML_TENSOR_TYPE_BUFFER;
+                dmlTensorDesc.Desc = &dmlBufferTensorDesc;
+
+                DML_ELEMENT_WISE_IDENTITY_OPERATOR_DESC dmlIdentityOperatorDesc{};
+                dmlIdentityOperatorDesc.InputTensor = &dmlTensorDesc;
+                dmlIdentityOperatorDesc.OutputTensor = &dmlTensorDesc; // Input and output tensors have same size/type.
+
+                // Like Direct3D 12, these DESC structs don't need to be long-lived. This means, for example, that it's safe to place
+                // the DML_OPERATOR_DESC (and all the subobjects it points to) on the stack, since they're no longer needed after
+                // CreateOperator returns.
+                DML_OPERATOR_DESC dmlOperatorDesc{};
+                dmlOperatorDesc.Type = DML_OPERATOR_ELEMENT_WISE_IDENTITY;
+                dmlOperatorDesc.Desc = &dmlIdentityOperatorDesc;
+
+                auto res = dmlDevice->CreateOperator(
+                    &dmlOperatorDesc,
+                    DARKNESS_IID_PPV_ARGS(dmlOperator.GetAddressOf()));
+            }
+
+            // Compile the operator into an object that can be dispatched to the GPU. In this step, DirectML performs operator
+            // fusion and just-in-time (JIT) compilation of shader bytecode, then compiles it into a Direct3D 12 pipeline state object (PSO).
+            // The resulting compiled operator is a baked, optimized form of an operator suitable for execution on the GPU.
+
+            tools::ComPtr<IDMLCompiledOperator> dmlCompiledOperator;
+            res = dmlDevice->CompileOperator(
+                dmlOperator.Get(),
+                DML_EXECUTION_FLAG_NONE,
+                DARKNESS_IID_PPV_ARGS(dmlCompiledOperator.GetAddressOf()));
+
+            // 24 elements * 4 == 96 bytes.
+            UINT64 tensorBufferSize{ dmlBufferTensorDesc.TotalTensorSizeInBytes };
+
+            tools::ComPtr<IDMLOperatorInitializer> dmlOperatorInitializer;
+            IDMLCompiledOperator* dmlCompiledOperators[] = { dmlCompiledOperator.Get() };
+            res = dmlDevice->CreateOperatorInitializer(
+                ARRAYSIZE(dmlCompiledOperators),
+                dmlCompiledOperators,
+                DARKNESS_IID_PPV_ARGS(dmlOperatorInitializer.GetAddressOf()));
+
+            // Query the operator for the required size (in descriptors) of its binding table.
+            // You need to initialize an operator exactly once before it can be executed, and
+            // the two stages require different numbers of descriptors for binding. For simplicity,
+            // we create a single descriptor heap that's large enough to satisfy them both.
+            DML_BINDING_PROPERTIES initializeBindingProperties = dmlOperatorInitializer->GetBindingProperties();
+            DML_BINDING_PROPERTIES executeBindingProperties = dmlCompiledOperator->GetBindingProperties();
+            UINT descriptorCount = std::max(
+                initializeBindingProperties.RequiredDescriptorCount,
+                executeBindingProperties.RequiredDescriptorCount);
+
+            // Create descriptor heaps.
+            tools::ComPtr<ID3D12DescriptorHeap> descriptorHeap;
+
+            D3D12_DESCRIPTOR_HEAP_DESC descriptorHeapDesc{};
+            descriptorHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+            descriptorHeapDesc.NumDescriptors = descriptorCount;
+            descriptorHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+            res = m_device->CreateDescriptorHeap(
+                &descriptorHeapDesc,
+                DARKNESS_IID_PPV_ARGS(descriptorHeap.GetAddressOf()));
+
+            auto cmdList = device.createCommandList("DirectMLTestCmdList", CommandListType::Direct);
+            auto commandList = static_cast<CommandListImplDX12*>(cmdList.native())->native();
+
+            // Set the descriptor heap(s).
+            ID3D12DescriptorHeap* d3D12DescriptorHeaps[] = { descriptorHeap.Get() };
+            commandList->SetDescriptorHeaps(ARRAYSIZE(d3D12DescriptorHeaps), d3D12DescriptorHeaps);
+
+            // Create a binding table over the descriptor heap we just created.
+            DML_BINDING_TABLE_DESC dmlBindingTableDesc{};
+            dmlBindingTableDesc.Dispatchable = dmlOperatorInitializer.Get();
+            dmlBindingTableDesc.CPUDescriptorHandle = descriptorHeap->GetCPUDescriptorHandleForHeapStart();
+            dmlBindingTableDesc.GPUDescriptorHandle = descriptorHeap->GetGPUDescriptorHandleForHeapStart();
+            dmlBindingTableDesc.SizeInDescriptors = descriptorCount;
+
+            tools::ComPtr<IDMLBindingTable> dmlBindingTable;
+            res = dmlDevice->CreateBindingTable(
+                &dmlBindingTableDesc,
+                DARKNESS_IID_PPV_ARGS(dmlBindingTable.GetAddressOf()));
+
+            // Create the temporary and persistent resources that are necessary for executing an operator.
+
+            // The temporary resource is scratch memory (used internally by DirectML), whose contents you don't need to define.
+            // The persistent resource is long-lived, and you need to initialize it using the IDMLOperatorInitializer.
+
+            UINT64 temporaryResourceSize = std::max(
+                initializeBindingProperties.TemporaryResourceSize,
+                executeBindingProperties.TemporaryResourceSize);
+            UINT64 persistentResourceSize = executeBindingProperties.PersistentResourceSize;
+
+            // Bind and initialize the operator on the GPU.
+
+            BufferOwner temporaryBuffer;
+            if (temporaryResourceSize != 0)
+            {
+                temporaryBuffer = device.createBuffer(BufferDescription().elementSize(1).elements(temporaryResourceSize).name("temporaryBuffer"));
+
+                if (initializeBindingProperties.TemporaryResourceSize != 0)
+                {
+                    DML_BUFFER_BINDING bufferBinding{ static_cast<BufferImplDX12*>(temporaryBuffer.resource().m_impl)->native(), 0, temporaryResourceSize };
+                    DML_BINDING_DESC bindingDesc{ DML_BINDING_TYPE_BUFFER, &bufferBinding };
+                    dmlBindingTable->BindTemporaryResource(&bindingDesc);
+                }
+            }
+
+            BufferOwner persistentBuffer;
+            if (persistentResourceSize != 0)
+            {
+                persistentBuffer = device.createBuffer(BufferDescription().elementSize(1).elements(persistentResourceSize).name("persistentBuffer"));
+
+                // The persistent resource should be bound as the output to the IDMLOperatorInitializer.
+                DML_BUFFER_BINDING bufferBinding{ static_cast<BufferImplDX12*>(persistentBuffer.resource().m_impl)->native(), 0, persistentResourceSize };
+                DML_BINDING_DESC bindingDesc{ DML_BINDING_TYPE_BUFFER, &bufferBinding };
+                dmlBindingTable->BindOutputs(1, &bindingDesc);
+            }
+
+            // The command recorder is a stateless object that records Dispatches into an existing Direct3D 12 command list.
+            tools::ComPtr<IDMLCommandRecorder> dmlCommandRecorder;
+            res = dmlDevice->CreateCommandRecorder(
+                DARKNESS_IID_PPV_ARGS(dmlCommandRecorder.GetAddressOf()));
+
+            // Record execution of the operator initializer.
+            dmlCommandRecorder->RecordDispatch(
+                commandList,
+                dmlOperatorInitializer.Get(),
+                dmlBindingTable.Get());
+
+            // Close the Direct3D 12 command list, and submit it for execution as you would any other command list. You could
+            // in principle record the execution into the same command list as the initialization, but you need only to Initialize
+            // once, and typically you want to Execute an operator more frequently than that.
+            device.submitBlocking(cmdList);
+
+            // 
+            // Bind and execute the operator on the GPU.
+            // 
+
+            auto cmdList2 = device.createCommandList("DirectMLTestCmdList2", CommandListType::Direct);
+            auto commandList2 = static_cast<CommandListImplDX12*>(cmdList2.native())->native();
+
+            commandList2->SetDescriptorHeaps(ARRAYSIZE(d3D12DescriptorHeaps), d3D12DescriptorHeaps);
+
+            // Reset the binding table to bind for the operator we want to execute (it was previously used to bind for the
+            // initializer).
+
+            dmlBindingTableDesc.Dispatchable = dmlCompiledOperator.Get();
+
+            res = dmlBindingTable->Reset(&dmlBindingTableDesc);
+
+            if (temporaryResourceSize != 0)
+            {
+                DML_BUFFER_BINDING bufferBinding{ static_cast<BufferImplDX12*>(temporaryBuffer.resource().m_impl)->native(), 0, temporaryResourceSize };
+                DML_BINDING_DESC bindingDesc{ DML_BINDING_TYPE_BUFFER, &bufferBinding };
+                dmlBindingTable->BindTemporaryResource(&bindingDesc);
+            }
+
+            if (persistentResourceSize != 0)
+            {
+                DML_BUFFER_BINDING bufferBinding{ static_cast<BufferImplDX12*>(persistentBuffer.resource().m_impl)->native(), 0, persistentResourceSize };
+                DML_BINDING_DESC bindingDesc{ DML_BINDING_TYPE_BUFFER, &bufferBinding };
+                dmlBindingTable->BindPersistentResource(&bindingDesc);
+            }
+
+            // Create tensor buffers for upload/input/output/readback of the tensor elements.
+            std::vector<FLOAT> inputTensorElementArray;
+            inputTensorElementArray.reserve(tensorElementCount);
+            for(int i = 0; i < tensorElementCount; ++i)
+            {
+                inputTensorElementArray.emplace_back(1.618f);
+            };
+
+            auto inputBuffer = device.createBuffer(
+                BufferDescription()
+                .elementSize(sizeof(FLOAT))
+                .elements(tensorElementCount)
+                .usage(ResourceUsage::GpuReadWrite)
+                .name("inputBuffer")
+                .setInitialData(BufferDescription::InitialData(inputTensorElementArray)));
+
+            DML_BUFFER_BINDING inputBufferBinding{ static_cast<BufferImplDX12*>(inputBuffer.resource().m_impl)->native(), 0, tensorBufferSize };
+            DML_BINDING_DESC inputBindingDesc{ DML_BINDING_TYPE_BUFFER, &inputBufferBinding };
+            dmlBindingTable->BindInputs(1, &inputBindingDesc);
+
+            auto outputBuffer = device.createBuffer(
+                BufferDescription()
+                .usage(ResourceUsage::GpuReadWrite)
+                .name("outputBuffer")
+                .elementSize(sizeof(FLOAT))
+                .elements(tensorElementCount));
+
+            DML_BUFFER_BINDING outputBufferBinding{ static_cast<BufferImplDX12*>(outputBuffer.resource().m_impl)->native(), 0, tensorBufferSize };
+            DML_BINDING_DESC outputBindingDesc{ DML_BINDING_TYPE_BUFFER, &outputBufferBinding };
+            dmlBindingTable->BindOutputs(1, &outputBindingDesc);
+
+            // Record execution of the compiled operator.
+            dmlCommandRecorder->RecordDispatch(commandList2, dmlCompiledOperator.Get(), dmlBindingTable.Get());
+
+            //CloseExecuteResetWait(d3D12Device, commandQueue, commandAllocator, commandList);
+            device.submitBlocking(cmdList2);
+
+            // The output buffer now contains the result of the identity operator,
+            // so read it back if you want the CPU to access it.
+            auto readbackBuffer = device.createBuffer(
+                BufferDescription()
+                .name("readbackBuffer")
+                .elementSize(sizeof(FLOAT))
+                .elements(tensorElementCount)
+                .usage(ResourceUsage::GpuToCpu));
+            
+            auto cmdList3 = device.createCommandList("DirectMLTestCmdList3", CommandListType::Direct);
+            auto commandList3 = static_cast<CommandListImplDX12*>(cmdList3.native())->native();
+            cmdList3.copyBuffer(outputBuffer, readbackBuffer, tensorElementCount);
+            device.submitBlocking(cmdList3);
+
+            //D3D12_RANGE tensorBufferRange{ 0, static_cast<SIZE_T>(tensorBufferSize) };
+            //FLOAT* outputBufferData{};
+            //THROW_IF_FAILED(readbackBuffer->Map(0, &tensorBufferRange, reinterpret_cast<void**>(&outputBufferData)));
+            auto outputBufferData = reinterpret_cast<FLOAT*>(readbackBuffer.resource().map(device));
+
+            std::wstring outputString = L"output tensor: ";
+            for (size_t tensorElementIndex{ 0 }; tensorElementIndex < tensorElementCount; ++tensorElementIndex, ++outputBufferData)
+            {
+                outputString += std::to_wstring(*outputBufferData) + L' ';
+            }
+
+            //std::wcout << outputString << std::endl;
+            OutputDebugStringW(outputString.c_str());
+
+            //D3D12_RANGE emptyRange{ 0, 0 };
+            readbackBuffer.resource().unmap(device);
+#endif
 		}
 
         DeviceImplDX12::~DeviceImplDX12()

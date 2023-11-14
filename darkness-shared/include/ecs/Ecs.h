@@ -80,16 +80,17 @@ namespace ecs
         // These unpack component type id:s to a vector from template arguments
         template<typename... T>
         typename std::enable_if<sizeof...(T) == 0>::type
-            unpackSystems(std::vector<ComponentTypeId>& result) { }
+            unpackSystems(std::set<ComponentTypeId>& result) { }
 
         template<typename T, typename... Rest>
-        void unpackSystems(std::vector<ComponentTypeId>& result)
+        void unpackSystems(std::set<ComponentTypeId>& result)
         {
-            result.emplace_back(ComponentTypeStorage::typeId<typename std::remove_reference<T>::type>());
+            result.emplace(ComponentTypeStorage::typeId<typename std::remove_reference<T>::type>());
             unpackSystems<Rest& ...>(result);
         }
 
         // returns a pointer to the beginning of types component data
+#if 0
         template<typename T>
         typename std::remove_reference<T>::type* componentDataPointer(ComponentTypeId componentTypeIndex)
         {
@@ -111,6 +112,29 @@ namespace ecs
                 std::make_tuple<typename std::remove_reference<T>::type*>(ecs.componentDataPointer<typename std::remove_reference<T>::type>(ComponentTypeStorage::typeId<typename std::remove_reference<T>::type>())),
                 packComponentPointers<Arg, Args...>(ecs));
         }
+#else
+        //template<typename T>
+        //typename std::remove_reference<T>::type* componentDataPointer(ComponentTypeId componentTypeIndex)
+        //{
+        //    //reserveComponentData<typename std::remove_reference<T>::type>();
+        //    return std::any_cast<ComponentData<typename std::remove_reference<T>::type>&>(m_componentData[componentTypeIndex]).data();
+        //}
+
+        // these return a tuple of component data pointers [EcsTransform* data, EcsRigidBody* ptr, etc...]
+        template<typename T>
+        std::tuple<typename std::remove_reference<T>::type*> packComponentPointers(Chunk& chunk)
+        {
+            return std::make_tuple<typename std::remove_reference<T>::type*>(chunk.componentDataPointer<typename std::remove_reference<T>::type>(ComponentTypeStorage::typeId<typename std::remove_reference<T>::type>()));
+        }
+
+        template <typename T, typename Arg, typename... Args>
+        std::tuple<typename std::remove_reference<T>::type*, typename std::remove_reference<Arg>::type*, Args...> packComponentPointers(Chunk& chunk)
+        {
+            return std::tuple_cat(
+                std::make_tuple<typename std::remove_reference<T>::type*>(chunk.componentDataPointer<typename std::remove_reference<T>::type>(ComponentTypeStorage::typeId<typename std::remove_reference<T>::type>())),
+                packComponentPointers<Arg, Args...>(chunk));
+        }
+#endif
 
         // these call a query lambda with component references. the tuple contains the root pointers to component datas and we index to correct entity component with entityId
         template<typename Function, typename Tuple, size_t ... I>
@@ -129,28 +153,42 @@ namespace ecs
         template<typename Func, typename... Args>
         void queryInternal(Func func)
         {
-            std::vector<uint64_t> typeIndexes;
+            // Component type id list
+            std::set<ComponentTypeId> typeIndexes;
             unpackSystems<Args...>(typeIndexes);
-            auto tuples = packComponentPointers<Args...>(*this);
 
-        #ifdef PARALLEL_FOR_LOOP
-            std::for_each(
-                std::execution::par_unseq,
-                m_entities.begin(),
-                m_entities.end(),
-                [&](auto&& entity)
-        #else
-            for (auto& entity : m_entities)
-        #endif
+            // get archetypes that have all of these component types
+            std::vector<ComponentArcheTypeId> archetypes = ArcheTypeStorage::instance().archeTypesContain(typeIndexes);
+
+            for (auto&& archetype : archetypes)
             {
-                if (hasComponents(Entity(this, entity), typeIndexes))
-                    callQueryLambda(func, tuples, entity);
+#ifdef PARALLEL_FOR_LOOP
+                std::for_each(
+                    std::execution::par_unseq,
+                    m_chunks[archetype].begin(),
+                    m_chunks[archetype].end(),
+                    [&](auto& chunk)
+#else
+                for (auto& chunk : m_chunks[archetype])
+#endif
+                {
+                    if (!chunk.empty())
+                    {
+                        auto tuples = packComponentPointers<Args...>(chunk);
 
-        #ifdef PARALLEL_FOR_LOOP
-            });
-        #else
-        };
-        #endif
+
+                        for (auto&& entity : chunk)
+                        {
+                            callQueryLambda(func, tuples, entity);
+                        };
+                    }
+
+#ifdef PARALLEL_FOR_LOOP
+                });
+#else
+                }
+#endif
+            }
         };
 
         template <typename F, typename T>
@@ -179,7 +217,8 @@ namespace ecs
             auto chunkIndex = chunkIndexFromEntityId(entity.entityId);
             
             // remove the entity from it's current chunk
-            m_chunks[currentArcheType][chunkIndex].free(entityIndex);
+            if(entity != m_emptyEntity)
+                m_chunks[currentArcheType][chunkIndex].free(entityIndex);
             
             // now update the type set and get the new archetype
             ArcheType temporaryArcheType(currentArcheType);
@@ -189,24 +228,41 @@ namespace ecs
 
             // make sure we have space for that archetype
             if (newArcheTypeId >= m_chunks.size())
+            {
                 m_chunks.resize(newArcheTypeId + 1);
+                m_lastUsedChunk.resize(newArcheTypeId + 1, -1);
+            }
 
             // find a chunk with free space
-            //auto& chunkList = m_chunks[newArcheTypeId];
-            //uint64_t chunkIndex = 0;
-            //for(auto&& ch : chunkList)
-            //{
-            //    if (ch.available())
-            //    {
-            //        entity.entityId = createEntityId(ch.allocate(), chunkIndex, newArcheTypeId);
-            //        return;
-            //    }
-            //    ++chunkIndex;
-            //}
+            auto lastUsed = m_lastUsedChunk[newArcheTypeId];
+            if (lastUsed != -1)
+            {
+                auto& ch = m_chunks[newArcheTypeId][lastUsed];
+                if (ch.available())
+                {
+                    entity.entityId = createEntityId(ch.allocate(), chunkIndex, newArcheTypeId);
+                    return;
+                }
+            }
+
+            auto& chunkList = m_chunks[newArcheTypeId];
+            chunkIndex = 0;
+            for(int i = 0; i < chunkList.size(); ++i)
+            {
+                auto& ch = chunkList[i];
+                if (ch.available())
+                {
+                    entity.entityId = createEntityId(ch.allocate(), chunkIndex, newArcheTypeId);
+                    m_lastUsedChunk[newArcheTypeId] = i;
+                    return;
+                }
+                ++chunkIndex;
+            }
 
             // or create new chunk if one wasn't available
-            //chunkList.emplace_back(Chunk(newArcheTypeId));
-            //entity.entityId = createEntityId(chunkList.back().allocate(), chunkList.size()-1, newArcheTypeId);
+            chunkList.emplace_back(Chunk(newArcheTypeId));
+            entity.entityId = createEntityId(chunkList.back().allocate(), chunkList.size()-1, newArcheTypeId);
+            m_lastUsedChunk[newArcheTypeId] = chunkList.size() - 1;
         }
 
         bool hasComponent(const Entity& entity, ComponentTypeId componentTypeId)
@@ -317,16 +373,48 @@ namespace ecs
                 m_entityIndexes[i] = &m_entities[i * VectorizationSize];
         }*/
 
-        template<typename F>
-        engine::vector<F>& system()
+        //template<typename F>
+        //engine::vector<F>& system()
+        //{
+        //    auto system = typeIndex<F>();
+        //    return std::any_cast<ComponentData<typename std::remove_reference<F>::type>&>(m_componentData[system]).storage();
+        //}
+
+        template<typename T>
+        void copyRaw(T* data, size_t elements)
         {
-            auto system = typeIndex<F>();
-            return std::any_cast<ComponentData<typename std::remove_reference<F>::type>&>(m_componentData[system]).storage();
+            // Component type id list
+            auto typeId = ComponentTypeStorage::typeId<typename std::remove_reference<T>::type>();
+            std::set<ComponentTypeId> types;
+            types.emplace(typeId);
+
+            // get archetypes that have all of these component types
+            std::vector<ComponentArcheTypeId> archetypes = ArcheTypeStorage::instance().archeTypesContain(types);
+
+            auto dst = data;
+            for (auto&& archetype : archetypes)
+            {
+                for (auto& chunk : m_chunks[archetype])
+                {
+                    if (!chunk.empty())
+                    {
+                        auto srcPtr = chunk.componentDataPointer<typename std::remove_reference<T>::type>(typeId);
+                        memcpy(
+                            dst, 
+                            srcPtr, 
+                            chunk.size() * ComponentTypeStorage::typeInfo(typeId).typeSizeBytes
+                        );
+                        dst += chunk.size();
+                    }
+
+                }
+            }
         }
 
     private:
         Entity m_emptyEntity;
         engine::vector<engine::vector<Chunk>> m_chunks;
+        engine::vector<int> m_lastUsedChunk;
         
         //engine::vector<EntityId*> m_entityIndexes;
         engine::vector<EntityId> m_entities;

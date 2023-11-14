@@ -9,6 +9,8 @@
 #include "engine/font/Font.h"
 #include "engine/graphics/Rect.h"
 #include "tools/ByteRange.h"
+#include "platform/Environment.h"
+#include "tools/PathTools.h"
 #include <algorithm>
 
 namespace ui
@@ -35,7 +37,7 @@ namespace ui
 	{
 		m_stringBuffer.resize(655360);
 		//m_font = m_device.fontManager().loadFont("C:\\work\\darkness\\darkness-editor-v2\\data\\Roboto\\Roboto-Regular.ttf");
-		m_font = m_device.fontManager().loadFont("C:\\work\\darkness\\darkness-editor-v2\\data\\SegoeUI.ttf");
+		m_font = m_device.fontManager().loadFont(engine::pathClean(engine::pathJoin(engine::getExecutableDirectory(), "..\\..\\..\\..\\data\\SegoeUI.ttf")));
 		
 
 		engine::DepthStencilOpDescription front;
