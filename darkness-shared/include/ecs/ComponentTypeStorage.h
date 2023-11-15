@@ -20,6 +20,7 @@ namespace ecs
     {
     public:
         virtual ~ComponentDataBase() {}
+        virtual void* rawData() = 0;
     };
 
     template<typename T>
@@ -36,6 +37,8 @@ namespace ecs
         {
             m_data.resize(size);
         }
+
+        void* rawData() override { return m_data.data(); }
     private:
         engine::vector<T> m_data;
     };

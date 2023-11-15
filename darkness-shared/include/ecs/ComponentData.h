@@ -117,7 +117,18 @@ namespace ecs
             return nullptr;
         }
 
-        
+        void* componentDataPointer(ComponentTypeId componentTypeId)
+        {
+            int index = 0; 
+
+            for (auto&& type : m_componentTypeIds)
+            {
+                if (type == componentTypeId)
+                    return static_cast<ComponentDataBase*>(m_componentData[index])->rawData();
+                ++index;
+            }
+            return nullptr;
+        }
 
     private:
         size_t m_elements;

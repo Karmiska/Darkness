@@ -17,7 +17,8 @@ using namespace application;
 #include <cmath>
 
 //constexpr size_t DataCount = 100'000'000;
-constexpr size_t DataCount = 10'000'000;
+constexpr size_t DataCount = 100'000'000;
+//constexpr size_t DataCount = 100;
 
 #include "engine/Ecs.h"
 #include "ecs/Ecs.h"
@@ -370,8 +371,25 @@ int doWork()
 			auto entity = ecs.createEntity();
 			entity.addComponent<EcsTransform>();
 			entity.addComponent<EcsRigidBody>();
+			
+			bool hasA = entity.hasComponent<A>();
+			bool hasB = entity.hasComponent<B>();
+			
 			entity.addComponent<A>();
 			entity.addComponent<B>();
+
+			
+			hasA = entity.hasComponent<A>();
+			hasB = entity.hasComponent<B>();
+
+			entity.component<EcsTransform>().position = Vector4f{ 0.0f, 0.0f, 0.0f, 0.0f };
+			entity.component<EcsRigidBody>().mass = 1500.0f;
+
+			entity.removeComponent<A>();
+			entity.removeComponent<B>();
+
+			hasA = entity.hasComponent<A>();
+			hasB = entity.hasComponent<B>();
 		}
 
 		//for (int i = 0; i < DataCount; ++i)

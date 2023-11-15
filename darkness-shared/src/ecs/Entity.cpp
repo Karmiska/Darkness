@@ -17,4 +17,9 @@ namespace ecs
     {
         m_ecs->removeComponent(*this, componentTypeId);
     }
+
+    void* Entity::component(ComponentTypeId componentTypeId)
+    {
+        return m_ecs->component(*this, componentTypeId);
+    }
 }

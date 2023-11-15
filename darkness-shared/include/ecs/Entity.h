@@ -73,9 +73,17 @@ namespace ecs
             removeComponent(ComponentTypeStorage::typeId<typename std::remove_reference<T>::type>());
         }
 
+        template<typename T>
+        T& component()
+        {
+            T* ptr = reinterpret_cast<T*>(component(ComponentTypeStorage::typeId<typename std::remove_reference<T>::type>()));
+            return *(ptr + entityIndexFromEntityId(entityId));
+        }
+
         void addComponent(ComponentTypeId componentTypeId);
         bool hasComponent(ComponentTypeId componentTypeId);
         void removeComponent(ComponentTypeId componentTypeId);
+        void* component(ComponentTypeId componentTypeId);
 
         bool hasComponents(const std::vector<ComponentTypeId>& componentIds)
         {

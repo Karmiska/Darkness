@@ -258,6 +258,12 @@ namespace ecs
         {
         }
 
+        ArcheType(const ArcheTypeSet& set)
+        {
+            m_typeSet = set;
+            m_id = ArcheTypeStorage::instance().archeTypeIdFromSet(m_typeSet);
+        }
+
         ArcheType(ComponentArcheTypeId id, ComponentTypeId typeId)
         {
             if (id != InvalidArcheTypeId)
@@ -281,6 +287,11 @@ namespace ecs
         bool contains(ComponentTypeId typeId) const
         {
             return m_typeSet.get(typeId);
+        }
+
+        const ArcheTypeSet& typeSet() const
+        {
+            return m_typeSet;
         }
 
     private:
