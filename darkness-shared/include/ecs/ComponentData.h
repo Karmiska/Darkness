@@ -88,6 +88,12 @@ namespace ecs
             return 0;
         }
 
+        void swap(uint64_t a, uint64_t b)
+        {
+            for (auto&& type : m_componentData)
+                static_cast<ComponentDataBase*>(type)->swap(a, b);
+        }
+
         void free(uint64_t id)
         {
             uint16_t ocp = id / 64;
@@ -128,6 +134,22 @@ namespace ecs
                 ++index;
             }
             return nullptr;
+        }
+
+        void copy(const Chunk& srcChunk, uint64_t srcIndex, uint64_t dstIndex, size_t elements)
+        {
+            for (int i = 0; i < srcChunk.m_componentTypeIds.size(); ++i)
+            {
+                auto typeId = srcChunk.m_componentTypeIds[i];
+                for (int a = 0; a < m_componentTypeIds.size(); ++a)
+                {
+                    if (typeId == m_componentTypeIds[a])
+                    {
+                        m_componentData[a]->copy(srcChunk.m_componentData[i], srcIndex, dstIndex, elements);
+                        break;
+                    }
+                }
+            }
         }
 
     private:

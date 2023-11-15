@@ -133,129 +133,118 @@ namespace ecs
         {
             static void call(Ecs& ecs, F func)
             {
-                // ComponentTypeStorage::typeId<typename std::remove_reference<T>::type>()
-                //auto tmp = instantiate_t<SortedTypeContainer, sorted_list_t<list<Args...>>>;
-                //auto archeTypeId = ComponentTypeStorage::archetypeId<Args...>();
                 ecs.queryInternal<F, Args...>(func);
             };
         };
 
     private:
         friend class Entity;
+        enum class ComponentModification { Add, Remove };
+
         void addComponent(Entity& entity, ComponentTypeId componentTypeId)
         {
-            // find out the archetype
-            ComponentArcheTypeId currentArcheType = archeTypeIdFromEntityId(entity.entityId);
-            auto entityIndex = entityIndexFromEntityId(entity.entityId);
-            auto chunkIndex = chunkIndexFromEntityId(entity.entityId);
-            
-            //TODO: need to copy over values!
-            //TODO: need to move around entities to avoid holes
+            modifyComponent(entity, componentTypeId, ComponentModification::Add);
+        }
 
-            // remove the entity from it's current chunk
-            if(entity != m_emptyEntity && currentArcheType != InvalidArcheTypeId)
-                m_chunks[currentArcheType][chunkIndex].free(entityIndex);
-            
+        void removeComponent(Entity& entity, ComponentTypeId componentTypeId)
+        {
+            modifyComponent(entity, componentTypeId, ComponentModification::Remove);
+        }
+
+        void modifyComponent(Entity& entity, ComponentTypeId componentTypeId, ComponentModification modify)
+        {
+            // Entity old info
+            ComponentArcheTypeId oldArcheTypeId = archeTypeIdFromEntityId(entity.entityId);
+            auto oldEntityIndex = entityIndexFromEntityId(entity.entityId);
+            auto oldChunkIndex = chunkIndexFromEntityId(entity.entityId);
+
             // now update the type set and get the new archetype
-            ArcheType temporaryArcheType(currentArcheType, componentTypeId);
-            auto newArcheTypeId = temporaryArcheType.id();
+            ArcheType newArcheType;
+            if (modify == ComponentModification::Add)
+            {
+                newArcheType = ArcheType(oldArcheTypeId, componentTypeId);
+            }
+            else if (modify == ComponentModification::Remove)
+            {
+                auto archeTypeSet = ArcheType(oldArcheTypeId).typeSet();
+                archeTypeSet.clear(componentTypeId);
+                newArcheType = ArcheType(archeTypeSet);
+            }
+            auto newArcheTypeId = newArcheType.id();
 
             // make sure we have space for that archetype
-            if (newArcheTypeId >= m_chunks.size())
-            {
-                m_chunks.resize(newArcheTypeId + 1);
-                m_lastUsedChunk.resize(newArcheTypeId + 1, -1);
-            }
+            updateChunkStorageAllocation(newArcheTypeId);
 
-            // find a chunk with free space
-            auto lastUsed = m_lastUsedChunk[newArcheTypeId];
+            // allocate new entity
+            entity.entityId = allocateNewEntity(newArcheTypeId);
+            auto newEntityIndex = entityIndexFromEntityId(entity.entityId);
+            auto newEntityChunkIndex = chunkIndexFromEntityId(entity.entityId);
+
+            // if this entity was in some other archetype previously
+            if (oldArcheTypeId != InvalidArcheTypeId)
+            {
+                // swap the removed entity to last in chunk to avoid holes
+                auto& oldChunk = m_chunks[oldArcheTypeId][oldChunkIndex];
+                auto chunkSize = oldChunk.size();
+                if (oldEntityIndex < chunkSize - 1)
+                {
+                    oldChunk.swap(oldEntityIndex, chunkSize - 1);
+                    oldEntityIndex = chunkSize - 1;
+                }
+
+                // copy over values from the previous types
+                auto& newChunk = m_chunks[newArcheTypeId][newEntityChunkIndex];
+                newChunk.copy(oldChunk, oldEntityIndex, newEntityIndex, 1);
+
+                // remove the entity from it's old chunk
+                oldChunk.free(oldEntityIndex);
+            }
+        }
+
+        void updateChunkStorageAllocation(ComponentArcheTypeId id)
+        {
+            if (id >= m_chunks.size())
+            {
+                m_chunks.resize(id + 1);
+                m_lastUsedChunk.resize(id + 1, -1);
+            }
+        }
+
+        EntityId allocateNewEntity(ComponentArcheTypeId archeTypeId)
+        {
+            // check if we can fit the new entity to last used chunk
+            auto& lastUsed = m_lastUsedChunk[archeTypeId];
             if (lastUsed != -1)
             {
-                auto& ch = m_chunks[newArcheTypeId][lastUsed];
+                auto& ch = m_chunks[archeTypeId][lastUsed];
                 if (ch.available())
                 {
-                    entity.entityId = createEntityId(ch.allocate(), chunkIndex, newArcheTypeId);
-                    return;
+                    return createEntityId(ch.allocate(), lastUsed, archeTypeId);
                 }
             }
 
-            auto& chunkList = m_chunks[newArcheTypeId];
-            chunkIndex = 0;
-            for(int i = 0; i < chunkList.size(); ++i)
+            // find a chunk with free space
+            auto& chunkList = m_chunks[archeTypeId];
+            for (int i = 0; i < chunkList.size(); ++i)
             {
                 auto& ch = chunkList[i];
                 if (ch.available())
                 {
-                    entity.entityId = createEntityId(ch.allocate(), chunkIndex, newArcheTypeId);
-                    m_lastUsedChunk[newArcheTypeId] = i;
-                    return;
+                    lastUsed = i;
+                    return createEntityId(ch.allocate(), i, archeTypeId);
                 }
-                ++chunkIndex;
             }
 
             // or create new chunk if one wasn't available
-            chunkList.emplace_back(Chunk(newArcheTypeId));
-            entity.entityId = createEntityId(chunkList.back().allocate(), chunkList.size()-1, newArcheTypeId);
-            m_lastUsedChunk[newArcheTypeId] = chunkList.size() - 1;
+            chunkList.emplace_back(Chunk(archeTypeId));
+            lastUsed = chunkList.size() - 1;
+            return createEntityId(chunkList.back().allocate(), chunkList.size() - 1, archeTypeId);
         }
 
         bool hasComponent(const Entity& entity, ComponentTypeId componentTypeId)
         {
             ArcheType currentArcheType(archeTypeIdFromEntityId(entity.entityId));
             return currentArcheType.contains(componentTypeId);
-        }
-
-        void removeComponent(Entity& entity, ComponentTypeId componentTypeId)
-        {
-            // find out the archetype
-            ComponentArcheTypeId currentArcheType = archeTypeIdFromEntityId(entity.entityId);
-            auto entityIndex = entityIndexFromEntityId(entity.entityId);
-            auto chunkIndex = chunkIndexFromEntityId(entity.entityId);
-
-            // TODO: need to copy over values!
-            // TODO: need to move around entities to avoid holes
-
-            // remove the entity from it's current chunk
-            m_chunks[currentArcheType][chunkIndex].free(entityIndex);
-
-            // now update the type set and get the new archetype
-            auto archeTypeSet = ArcheType(currentArcheType).typeSet();
-            archeTypeSet.set(componentTypeId, false);
-            ArcheType newArcheType(archeTypeSet);
-            auto newArcheTypeId = newArcheType.id();
-
-            // make sure we have space for that archetype
-            if (newArcheTypeId >= m_chunks.size())
-            {
-                m_chunks.resize(newArcheTypeId + 1);
-                m_lastUsedChunk.resize(newArcheTypeId + 1, -1);
-            }
-
-            // find a chunk with free space
-            auto lastUsed = m_lastUsedChunk[newArcheTypeId];
-            if (lastUsed != -1)
-            {
-                auto& ch = m_chunks[newArcheTypeId][lastUsed];
-                if (ch.available())
-                {
-                    entity.entityId = createEntityId(ch.allocate(), chunkIndex, newArcheTypeId);
-                    return;
-                }
-            }
-
-            auto& chunkList = m_chunks[newArcheTypeId];
-            chunkIndex = 0;
-            for (int i = 0; i < chunkList.size(); ++i)
-            {
-                auto& ch = chunkList[i];
-                if (ch.available())
-                {
-                    entity.entityId = createEntityId(ch.allocate(), chunkIndex, newArcheTypeId);
-                    m_lastUsedChunk[newArcheTypeId] = i;
-                    return;
-                }
-                ++chunkIndex;
-            }
         }
 
         void* component(Entity& entity, ComponentTypeId componentTypeId)

@@ -381,13 +381,13 @@ int doWork()
 			
 			hasA = entity.hasComponent<A>();
 			hasB = entity.hasComponent<B>();
-
+			
 			entity.component<EcsTransform>().position = Vector4f{ 0.0f, 0.0f, 0.0f, 0.0f };
 			entity.component<EcsRigidBody>().mass = 1500.0f;
-
+			
 			entity.removeComponent<A>();
 			entity.removeComponent<B>();
-
+			
 			hasA = entity.hasComponent<A>();
 			hasB = entity.hasComponent<B>();
 		}

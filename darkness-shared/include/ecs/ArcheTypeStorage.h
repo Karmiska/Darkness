@@ -32,11 +32,16 @@ namespace ecs
         BitSet<N>& operator=(const BitSet<N>& set) = default;
         BitSet<N>& operator=(BitSet<N>&&) = default;
 
-        void set(int index, bool value = true)
+        void set(int index)
         {
             m_data[index / 64] |= (uint64_t)1u << ((uint64_t)index - ((uint64_t)index / (uint64_t)64u));
         }
         
+        void clear(int index)
+        {
+            m_data[index / 64] &= ~((uint64_t)1u << ((uint64_t)index - ((uint64_t)index / (uint64_t)64u)));
+        }
+
         bool get(int index) const
         {
             return m_data[index / 64] & (uint64_t)1u << ((uint64_t)index - ((uint64_t)index / (uint64_t)64u));
@@ -193,7 +198,7 @@ namespace ecs
         {
             ArcheTypeSet set;
             for (auto& t : types)
-                set.set(t, true);
+                set.set(t);
             return set;
         }
 

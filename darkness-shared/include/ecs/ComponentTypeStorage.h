@@ -21,6 +21,8 @@ namespace ecs
     public:
         virtual ~ComponentDataBase() {}
         virtual void* rawData() = 0;
+        virtual void swap(uint64_t a, uint64_t b) noexcept = 0;
+        virtual void copy(ComponentDataBase* src, uint64_t srcIndex, uint64_t dstIndex, size_t elements) noexcept = 0;
     };
 
     template<typename T>
@@ -36,6 +38,20 @@ namespace ecs
         void resize(size_t size)
         {
             m_data.resize(size);
+        }
+
+        void swap(uint64_t a, uint64_t b) noexcept override
+        {
+            std::swap(m_data[a], m_data[b]);
+        }
+
+        void copy(ComponentDataBase* src, uint64_t srcIndex, uint64_t dstIndex, size_t elements) noexcept override
+        {
+            ComponentData<T>& srcCom = *static_cast<ComponentData<T>*>(src);
+            for (int i = 0; i < elements; ++i)
+            {
+                m_data[dstIndex + i] = srcCom.m_data[srcIndex + i];
+            }
         }
 
         void* rawData() override { return m_data.data(); }
