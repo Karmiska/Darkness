@@ -20,8 +20,9 @@ namespace ecs
         Chunk(ComponentArcheTypeId archeType)
             : m_used{ 0 }
         {
-            m_componentTypeIds = ArcheTypeStorage::instance().typeSetFromArcheTypeId(archeType);
+            m_componentTypeIds = ArcheTypeStorage::instance().typeIdVectorFromArcheType(archeType);
             uint32_t combinedTypeBytes = 0;
+            
             for (auto&& type : m_componentTypeIds)
             {
                 auto typeInfo = ComponentTypeStorage::typeInfo(type);
@@ -120,7 +121,7 @@ namespace ecs
 
     private:
         size_t m_elements;
-        std::set<ComponentTypeId> m_componentTypeIds;
+        engine::vector<ComponentTypeId> m_componentTypeIds;
         engine::vector<ComponentDataBase*> m_componentData;
 
         // should be optimized as bitset
@@ -202,4 +203,25 @@ namespace ecs
         }
 
     };
+
+    //class ChunkStorage
+    //{
+    //public:
+    //    Chunk createChunk(ComponentArcheTypeId archeType)
+    //    {
+    //        if (archeType >= m_freeChunks.size())
+    //            m_freeChunks.resize(archeType + 1);
+    //
+    //        auto& chunkList = m_freeChunks[archeType];
+    //        if (chunkList.size())
+    //        {
+    //            auto res = chunkList.top();
+    //            chunkList.pop();
+    //            return res;
+    //        }
+    //
+    //    }
+    //private:
+    //    engine::vector<std::stack<Chunk>> m_freeChunks;
+    //};
 }

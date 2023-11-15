@@ -5,6 +5,7 @@
 #include "TypeSort.h"
 #include "EcsShared.h"
 #include "tools/Debug.h"
+#include "tools/ToolsCommon.h"
 
 #include <typeinfo>
 #include <cstdint>
@@ -15,24 +16,207 @@
 
 namespace ecs
 {
-    constexpr uint64_t FnvPrime = 1099511628211u;
-    constexpr uint64_t FnvOffsetBasis = 14695981039346656037u;
-    constexpr uint64_t fnv1aHash(uint64_t value, uint64_t hash = FnvOffsetBasis);
+    template<auto N>
+    class BitSet
+    {
+        static constexpr size_t BitSetDataCount = (size_t)(((float)N / 64.0f)+0.5f);
+    public:
+        BitSet()
+        {
+            for (int i = 0; i < BitSetDataCount; ++i)
+                m_data[i] = 0;
+        }
 
-    uint64_t ArcheTypeHash(const std::set<ComponentTypeId>& types);
+        BitSet(const BitSet&) = default;
+        BitSet(BitSet&&) = default;
+        BitSet<N>& operator=(const BitSet<N>& set) = default;
+        BitSet<N>& operator=(BitSet<N>&&) = default;
+
+        void set(int index, bool value = true)
+        {
+            m_data[index / 64] |= (uint64_t)1u << ((uint64_t)index - ((uint64_t)index / (uint64_t)64u));
+        }
+        
+        bool get(int index) const
+        {
+            return m_data[index / 64] & (uint64_t)1u << ((uint64_t)index - ((uint64_t)index / (uint64_t)64u));
+        }
+
+        bool operator==(const BitSet& set) const
+        {
+            for (int i = 0; i < BitSetDataCount; ++i)
+                if (m_data[i] != set.m_data[i])
+                    return false;
+            return true;
+        }
+        
+        bool operator!=(const BitSet& set) const
+        {
+            return !(*this == set);
+        }
+
+        BitSet& operator&=(const BitSet& other) noexcept
+        {
+            for (int i = 0; i < BitSetDataCount; ++i)
+                m_data[i] &= other.m_data[i];
+
+            return *this;
+        }
+        BitSet& operator|=(const BitSet& other) noexcept
+        {
+            for (int i = 0; i < BitSetDataCount; ++i)
+                m_data[i] |= other.m_data[i];
+
+            return *this;
+        }
+        BitSet& operator^=(const BitSet& other) noexcept
+        {
+            for (int i = 0; i < BitSetDataCount; ++i)
+                m_data[i] ^= other.m_data[i];
+
+            return *this;
+        }
+
+        BitSet operator&(const BitSet& other) const noexcept
+        {
+            BitSet res = *this;
+
+            for (int i = 0; i < BitSetDataCount; ++i)
+                res.m_data[i] &= other.m_data[i];
+
+            return res;
+        }
+        BitSet operator|(const BitSet& other) const noexcept
+        {
+            BitSet res = *this;
+
+            for (int i = 0; i < BitSetDataCount; ++i)
+                res.m_data[i] |= other.m_data[i];
+
+            return res;
+        }
+        BitSet operator^(const BitSet& other) const noexcept
+        {
+            BitSet res = *this;
+
+            for (int i = 0; i < BitSetDataCount; ++i)
+                res.m_data[i] ^= other.m_data[i];
+
+            return res;
+        }
+
+    public:
+        struct Iterator
+        {
+            using iterator_category = std::forward_iterator_tag;
+            using difference_type = std::ptrdiff_t;
+            using value_type = uint64_t;
+            using pointer = uint64_t*;
+            using reference = uint64_t;
+
+            Iterator(const BitSet* set, uint16_t index)
+                : m_set{ set }
+                , m_index{ index }
+            {}
+
+            reference operator*() const { return m_index; }
+            pointer operator->() { return &m_index; }
+            Iterator& operator++()
+            {
+                auto cont = m_index / 64;
+                auto bit = m_index - (cont * 64);
+                unsigned long index = bit + 1;
+                if (index > 63)
+                {
+                    index = 0;
+                    ++cont;
+                }
+                for (int i = cont; i < BitSetDataCount; ++i)
+                {
+                    auto ocp = (m_set->m_data[i] >> (uint64_t)index) << (uint64_t)index;
+                    if (ocp != 0)
+                    {
+
+                        if (_BitScanForward64(&index, ocp))
+                        {
+                            m_index = (i * 64) + index;
+                            return *this;
+                        }
+                    }
+                    index = 0;
+                }
+
+                m_index = BitSetDataCount * 64;
+                return *this;
+            }
+            Iterator operator++(int) { Iterator tmp = *this; ++(*this); return tmp; }
+            friend bool operator== (const Iterator& a, const Iterator& b) { return a.m_index == b.m_index; };
+            friend bool operator!= (const Iterator& a, const Iterator& b) { return a.m_index != b.m_index; };
+
+        private:
+            const BitSet* m_set;
+            uint64_t m_index;
+        };
+
+        Iterator begin() const
+        {
+            for (int i = 0; i < BitSetDataCount; ++i)
+            {
+                auto& ocp = m_data[i];
+                if (ocp != 0)
+                {
+                    unsigned long index = 0;
+                    if (_BitScanForward64(&index, ocp))
+                    {
+                        return Iterator(this, (i * 64) + index);
+                    }
+                }
+            }
+            return Iterator(this, 0);
+        }
+        Iterator end() const
+        {
+            return Iterator(this, BitSetDataCount * 64);
+        }
+    private:
+        uint64_t m_data[BitSetDataCount];
+    };
+
+    using ArcheTypeSet = BitSet<128>;
 
     class ArcheType;
 
     class ArcheTypeStorage
     {
     public:
-        using HashType = uint64_t;
-    public:
-        ArcheTypeStorage()
-            : m_currentArcheTypeId{ 1 }
+        static ArcheTypeSet archeTypeSet(const engine::vector<ComponentTypeId>& types)
         {
-            m_archeTypeMap[ArcheTypeHash({})] = ArcheTypeContainer{ EmptyArcheTypeId, {} };
-            m_archeTypeIdToContainer.emplace_back(ArcheTypeContainer{ EmptyArcheTypeId, {} });
+            ArcheTypeSet set;
+            for (auto& t : types)
+                set.set(t, true);
+            return set;
+        }
+
+        ComponentArcheTypeId archeTypeIdFromSet(const ArcheTypeSet& set)
+        {
+            for (int i = 0; i < m_archeTypes.size(); ++i)
+                if (m_archeTypes[i] == set)
+                    return i;
+            m_archeTypes.emplace_back(set);
+            return m_archeTypes.size() - 1;
+        }
+
+        ArcheTypeSet typeSetFromArcheType(ComponentArcheTypeId id)
+        {
+            return m_archeTypes[id];
+        }
+
+        engine::vector<ComponentTypeId> typeIdVectorFromArcheType(ComponentArcheTypeId id)
+        {
+            engine::vector<ComponentTypeId> res;
+            for (auto&& t : m_archeTypes[id])
+                res.emplace_back(t);
+            return res;
         }
 
         static ArcheTypeStorage& instance()
@@ -41,68 +225,17 @@ namespace ecs
             return archeTypeStorage;
         }
 
-    public:
-        std::vector<ComponentArcheTypeId> archeTypesContain(const std::set<ComponentTypeId>& componentTypes)
+        engine::vector<ComponentArcheTypeId> archeTypesThatContain(const ArcheTypeSet& types)
         {
-            std::vector<ComponentArcheTypeId> result;
-            for (auto&& archeTypeContainer : m_archeTypeIdToContainer)
-            {
-                bool contains = true;
-                for (auto&& componentType : componentTypes)
-                {
-                    if (!archeTypeContainer.typeSet.contains(componentType))
-                    {
-                        contains = false;
-                        break;
-                    }
-                }
-                if (contains)
-                    result.emplace_back(archeTypeContainer.id);
-            }
-            return result;
-        }
-
-        const std::set<ComponentTypeId>& typeSetFromArcheTypeId(ComponentArcheTypeId id)
-        {
-            ASSERT(id < m_archeTypeIdToContainer.size(), "Unknown ArcheTypeId!");
-            return m_archeTypeIdToContainer[id].typeSet;
+            engine::vector<ComponentArcheTypeId> res;
+            for (int i = 0; i < m_archeTypes.size(); ++i)
+                if ((m_archeTypes[i] & types) == types)
+                    res.emplace_back(i);
+            return res;
         }
 
     private:
-        ComponentArcheTypeId m_currentArcheTypeId;
-        struct ArcheTypeContainer
-        {
-            ComponentArcheTypeId id;
-            std::set<ComponentTypeId> typeSet;
-        };
-        engine::unordered_map<HashType, ArcheTypeContainer> m_archeTypeMap;
-        engine::vector<ArcheTypeContainer> m_archeTypeIdToContainer;
-
-    private:
-        friend class ArcheType;
-        ComponentArcheTypeId archeTypeIdFromHash(HashType hash)
-        {
-            auto found = m_archeTypeMap.find(hash);
-            if (found != m_archeTypeMap.end())
-                return found->second.id;
-            return InvalidArcheTypeId;
-        }
-
-        ComponentArcheTypeId archeTypeIdFromHash(const std::set<ComponentTypeId>& types, HashType hash)
-        {
-            auto found = m_archeTypeMap.find(hash);
-            if (found != m_archeTypeMap.end())
-                return found->second.id;
-            else
-            {
-                ComponentArcheTypeId res = m_currentArcheTypeId++;
-                m_archeTypeMap[hash] = ArcheTypeContainer{ res, types };
-                if (m_archeTypeIdToContainer.size() <= res)
-                    m_archeTypeIdToContainer.resize(res + 1);
-                m_archeTypeIdToContainer[res] = ArcheTypeContainer{ res, types };
-                return res;
-            }
-        }
+        engine::vector<ArcheTypeSet> m_archeTypes;
     };
 
     class ArcheType
@@ -113,16 +246,31 @@ namespace ecs
             , m_typeSet{}
         {}
 
-        ArcheType(const std::set<ComponentTypeId>& types)
-            : m_id{ ArcheTypeStorage::instance().archeTypeIdFromHash(types, ArcheTypeHash(types)) }
-            , m_typeSet{ types }
+        ArcheType(const engine::vector<ComponentTypeId>& types)
+            : m_id{ ArcheTypeStorage::instance().archeTypeIdFromSet(ArcheTypeStorage::archeTypeSet(types)) }
+            , m_typeSet{ ArcheTypeStorage::instance().typeSetFromArcheType(m_id) }
         {
         }
 
         ArcheType(ComponentArcheTypeId id)
             : m_id{ id }
-            , m_typeSet{ ArcheTypeStorage::instance().typeSetFromArcheTypeId(id) }
+            , m_typeSet{ ArcheTypeStorage::instance().typeSetFromArcheType(id) }
         {
+        }
+
+        ArcheType(ComponentArcheTypeId id, ComponentTypeId typeId)
+        {
+            if (id != InvalidArcheTypeId)
+            {
+                m_typeSet = ArcheTypeStorage::instance().typeSetFromArcheType(id);
+                m_typeSet.set(typeId);
+                m_id = ArcheTypeStorage::instance().archeTypeIdFromSet(m_typeSet);
+            }
+            else
+            {
+                m_typeSet.set(typeId);
+                m_id = ArcheTypeStorage::instance().archeTypeIdFromSet(m_typeSet);
+            }
         }
 
         ComponentArcheTypeId id() const
@@ -130,17 +278,13 @@ namespace ecs
             return m_id;
         }
 
-        std::set<ComponentTypeId>& typeSet()
+        bool contains(ComponentTypeId typeId) const
         {
-            return m_typeSet;
-        }
-        const std::set<ComponentTypeId>& typeSet() const
-        {
-            return m_typeSet;
+            return m_typeSet.get(typeId);
         }
 
     private:
         ComponentArcheTypeId m_id;
-        std::set<ComponentTypeId> m_typeSet;
+        ArcheTypeSet m_typeSet;
     };
 }
