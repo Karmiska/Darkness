@@ -30,11 +30,7 @@ namespace engine
         void xy(const Vector2<T>& xy) { x = xy.x; y = xy.y; }
         void xyz(const Vector3<T>& xyz) { x = xyz.x; y = xyz.y; z = xyz.z; }
 
-        Vector3()
-            : x{}
-            , y{}
-            , z{}
-        {}
+        Vector3() = default;
 
         Vector3(T x, T y, T z)
             : x{ x }

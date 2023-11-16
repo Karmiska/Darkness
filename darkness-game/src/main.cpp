@@ -17,7 +17,7 @@ using namespace application;
 #include <cmath>
 
 //constexpr size_t DataCount = 100'000'000;
-constexpr size_t DataCount = 100'000'000;
+constexpr size_t DataCount = 500'000'000;
 //constexpr size_t DataCount = 100;
 
 #include "engine/Ecs.h"
@@ -29,6 +29,8 @@ constexpr size_t DataCount = 100'000'000;
 class Vector3f
 {
 public:
+	Vector3f() = default;
+
 	Vector3f(float _x, float _y, float _z)
 		: x{ _x }
 		, y{ _y }
@@ -113,6 +115,8 @@ public:
 class Vector4f
 {
 public:
+	Vector4f() = default;
+
 	Vector4f(float _x, float _y, float _z, float _w)
 		: x{ _x }
 		, y{ _y }
@@ -190,14 +194,15 @@ public:
 class EcsTransform
 {
 public:
-	EcsTransform()
-		//: position{ 0.0f, 0.0f, 0.0f, 1.0f }
-		: position{ arandomFloat(), arandomFloat(), arandomFloat(), 1.0f }
-	{}
+	//EcsTransform() = default;
+	//EcsTransform()
+	//	: position{ 0.0f, 0.0f, 0.0f, 1.0f }
+	//	//: position{ arandomFloat(), arandomFloat(), arandomFloat(), 1.0f }
+	//{}
 
-	EcsTransform(const Vector4f& _position)
-		: position{ _position }
-	{}
+	//EcsTransform(const Vector4f& _position)
+	//	: position{ _position }
+	//{}
 
 	EcsTransform operator+(const EcsTransform& tr)
 	{
@@ -221,12 +226,13 @@ public:
 	Vector3f velocity;
 	float mass;
 
-	EcsRigidBody()
-		//: initialvelocity{ 0.0f, 0.0f, 0.0f }
-		: initialvelocity{ arandomFloat() / 300.0f, arandomFloat() / 300.0f, arandomFloat() / 300.0f }
-		, mass{ 1.0f }
-		, velocity{ initialvelocity }
-	{}
+	//EcsRigidBody() = default;
+	//EcsRigidBody()
+	//	: initialvelocity{ 0.0f, 0.0f, 0.0f }
+	//	//: initialvelocity{ arandomFloat() / 300.0f, arandomFloat() / 300.0f, arandomFloat() / 300.0f }
+	//	, mass{ 1.0f }
+	//	, velocity{ initialvelocity }
+	//{}
 
 	void simulate(GravityWell& gravityWell, EcsTransform& transform, float timeStepMs)
 	{
@@ -436,7 +442,7 @@ int doWork()
 
 		LARGE_INTEGER prewarm;
 		QueryPerformanceCounter(&prewarm);
-		ecs.prewarmArcheType<EcsTransform, EcsRigidBody, A, B>(5ull * 1024ull * 1024ull * 1024ull);
+		ecs.prewarmArcheType<EcsTransform, EcsRigidBody, A, B>(25ull * 1024ull * 1024ull * 1024ull);
 		//ecs.prewarmArcheType<EcsTransform, EcsRigidBody, A, B>(1024ull * 1024ull);
 
 		//void* mem = malloc(5ull * 1024ull * 1024ull * 1024ull);
@@ -503,6 +509,9 @@ int doWork()
 
 				//transform += randomEntityTransform;
 				rigidBody.simulate(gravityWell, transform, 1000.0f / 60.0f);
+				//transform = Vector4f{ 0.1f, 0.1f, 0.1f, 0.1f };
+				//rigidBody.mass += 0.1f;
+				//rigidBody.velocity += Vector3f{ 0.1f, 0.1f, 0.1f };
 			});
 
 		LARGE_INTEGER simulated;

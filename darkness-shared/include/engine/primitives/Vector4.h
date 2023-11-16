@@ -190,12 +190,7 @@ namespace engine
         void xyz(const Vector3<T>& xyz) { x = xyz.x; y = xyz.y; z = xyz.z; }
         void xyzw(const Vector4<T>& xyzw) { x = xyzw.x; y = xyzw.y; z = xyzw.z; w = xyzw.w; }
 
-        Vector4()
-            : x{}
-            , y{}
-            , z{}
-            , w{}
-        {}
+        Vector4() = default;
 
 		Vector4(T x)
 			: x{ x }

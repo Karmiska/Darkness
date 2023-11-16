@@ -13,6 +13,7 @@ namespace ecs
 #define NOHOLES
 
     constexpr size_t PreferredChunkSizeBytes = 64 * 1024;
+    static const size_t ChunkDataAlignment = 64;
 
     // chunks have a maximum index of PreferredChunkSizeBytes if only one
     // element and its size is one byte. we store free chunk indexes in uint16.
@@ -20,30 +21,57 @@ namespace ecs
 
     class Chunk
     {
+        
     public:
         Chunk(ComponentArcheTypeId archeType)
             : m_used{ 0 }
         {
             m_componentTypeIds = ArcheTypeStorage::instance().typeSetFromArcheType(archeType);
             uint32_t combinedTypeBytes = 0;
-            
-            for (auto&& type : m_componentTypeIds)
-            {
-                auto typeInfo = ComponentTypeStorage::typeInfo(type);
-                combinedTypeBytes += typeInfo.typeSizeBytes;
-            }
-            
-            m_elements = PreferredChunkSizeBytes / combinedTypeBytes;
+            uint32_t typeCount = 0;
 
             for (auto&& type : m_componentTypeIds)
             {
                 auto typeInfo = ComponentTypeStorage::typeInfo(type);
-                m_componentData.emplace_back(typeInfo.create(m_elements));
+                combinedTypeBytes += typeInfo.typeSizeBytes;
+                ++typeCount;
+            }
+            m_componentData.reserve(typeCount);
+            m_typePaddingSizeBytes = typeCount * ChunkDataAlignment;
+            auto chunkSizeForData = PreferredChunkSizeBytes - m_typePaddingSizeBytes;
+
+            m_elements = chunkSizeForData / combinedTypeBytes;
+            m_elementSizeBytes = combinedTypeBytes;
+        }
+
+        // storageBytes is 64 bytes aligned ptr.
+        // it contains enough space for (capacity() * elementSizeBytes()) + typePaddingSizeBytes()
+        // typePaddingSizeBytes() = 64 bytes after each component data
+        void initialize(void* storageBytes, size_t bytes)
+        {
+            auto ptr = reinterpret_cast<uintptr_t>(storageBytes);
+            for (auto&& type : m_componentTypeIds)
+            {
+                auto typeInfo = ComponentTypeStorage::typeInfo(type);
+                auto typeBytes = typeInfo.typeSizeBytes * m_elements;
+                m_componentData.emplace_back(typeInfo.create(reinterpret_cast<void*>(ptr), m_elements));
+                ptr += typeBytes;
+                ptr = roundUpToMultiple(ptr, ChunkDataAlignment);
             }
 
 #ifndef NOHOLES
             m_occupancy.resize(roundUpToMultiple(m_elements / 64u, 64));
 #endif
+        }
+
+        size_t typePaddingSizeBytes() const
+        {
+            return m_typePaddingSizeBytes;
+        }
+
+        size_t elementSizeBytes() const
+        {
+            return m_elementSizeBytes;
         }
 
         size_t size() const
@@ -172,6 +200,8 @@ namespace ecs
 
     private:
         size_t m_elements;
+        size_t m_elementSizeBytes;
+        size_t m_typePaddingSizeBytes;
         ArcheTypeSet m_componentTypeIds;
         engine::vector<ComponentDataBase*> m_componentData;
 
@@ -293,119 +323,5 @@ namespace ecs
         }
 #endif
     };
-
-#undef MULTITHREADED_PREWARM
-
-    class ChunkStorage
-    {
-    private:
-        struct Range
-        {
-        public:
-            Range(uint64_t range)
-                : m_range{ range }
-            {}
-
-            struct Iterator
-            {
-                using iterator_category = std::forward_iterator_tag;
-                using difference_type = std::ptrdiff_t;
-                using value_type = uint64_t;
-                using pointer = uint64_t*;
-                using reference = uint64_t;
-
-                Iterator()
-                    : m_index{0}
-                {}
-
-                Iterator(uint64_t index)
-                    : m_index{ index }
-                {}
-
-                reference operator*() const { return m_index; }
-                pointer operator->() { return &m_index; }
-                Iterator& operator++()
-                {
-                    ++m_index;
-                    return *this;
-                }
-                Iterator operator++(int) { Iterator tmp = *this; ++(*this); return tmp; }
-                friend bool operator== (const Iterator& a, const Iterator& b) { return a.m_index == b.m_index; };
-                friend bool operator!= (const Iterator& a, const Iterator& b) { return a.m_index != b.m_index; };
-
-            private:
-                uint64_t m_index;
-            };
-
-            Iterator begin() const
-            {
-                return Iterator(0);
-            }
-            Iterator end() const
-            {
-                return Iterator(m_range);
-            }
-        private:
-            uint64_t m_range;
-        };
-    public:
-        Chunk* allocateChunk(ComponentArcheTypeId archeType)
-        {
-            if (archeType >= m_freeChunks.size())
-                m_freeChunks.resize(archeType + 1);
     
-            auto& chunkList = m_freeChunks[archeType];
-            if (chunkList.size())
-            {
-#ifndef MULTITHREADED_PREWARM
-                auto res = chunkList.top();
-                chunkList.pop();
-#else
-                auto res = chunkList.back();
-                chunkList.pop_back();
-#endif
-                return res;
-            }
-    
-            return new Chunk(archeType);
-        }
-
-        void freeChunk(ComponentArcheTypeId archeType, Chunk* chunk)
-        {
-#ifndef MULTITHREADED_PREWARM
-            m_freeChunks[archeType].push(chunk);
-#else
-            m_freeChunks[archeType].emplace_back(chunk);
-#endif
-        }
-
-        void reserve(ComponentArcheTypeId archeType, size_t chunks)
-        {
-            if (archeType >= m_freeChunks.size())
-                m_freeChunks.resize(archeType + 1);
-
-#ifndef MULTITHREADED_PREWARM
-            for (int i = m_freeChunks.size(); i < chunks; ++i)
-                m_freeChunks[archeType].push(new Chunk(archeType));
-#else
-            m_freeChunks[archeType].resize(chunks);
-            Range range(chunks);
-            std::for_each(
-                std::execution::par_unseq,
-                range.begin(),
-                range.end(),
-                [&](auto id)
-            {
-                m_freeChunks[archeType][id] = new Chunk(archeType);
-            });
-#endif
-        }
-    private:
-#ifndef MULTITHREADED_PREWARM
-        engine::vector<std::stack<Chunk*>> m_freeChunks;
-#else
-        engine::vector<std::vector<Chunk*>> m_freeChunks;
-#endif
-        std::mutex m_mutex;
-    };
 }

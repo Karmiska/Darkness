@@ -2,6 +2,7 @@
 
 #include "ecs/ComponentData.h"
 #include "ecs/ComponentTypeStorage.h"
+#include "ecs/ChunkStorage.h"
 #include "ecs/Entity.h"
 #include "tools/ToolsCommon.h"
 #include "ecs/TypeSort.h"

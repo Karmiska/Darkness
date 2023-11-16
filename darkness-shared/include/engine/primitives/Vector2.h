@@ -16,10 +16,7 @@ namespace engine
 
         void xy(const Vector2<T>& xy) { x = xy.x; y = xy.y; }
 
-        Vector2()
-            : x{}
-            , y{}
-        {}
+        Vector2() = default;
 
         Vector2(T x, T y)
             : x{ x }

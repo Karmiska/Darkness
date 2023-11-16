@@ -13,6 +13,7 @@
 #include <any>
 #include <functional>
 #include <set>
+#include <new>
 
 namespace ecs
 {
@@ -29,16 +30,23 @@ namespace ecs
     class ComponentData : public ComponentDataBase
     {
     public:
-        T* data() { return m_data.data(); }
-        const T* data() const { return m_data.data(); }
-
-        engine::vector<T>& storage() { return m_data; }
-        const engine::vector<T>& storage() const { return m_data; }
-
-        void resize(size_t size)
+        ComponentData(T* data, size_t size)
+            : m_data{ data }
+            , m_size{ size }
         {
-            m_data.resize(size);
         }
+
+        ~ComponentData()
+        {
+            for (size_t i = 0; i < m_size; ++i)
+                m_data[i].~T();
+        }
+
+        T* data() { return m_data; }
+        const T* data() const { return m_data; }
+        void* rawData() override { return m_data; }
+
+        size_t size() const { return m_size; }
 
         void swap(uint64_t a, uint64_t b) noexcept override
         {
@@ -54,9 +62,9 @@ namespace ecs
             }
         }
 
-        void* rawData() override { return m_data.data(); }
     private:
-        engine::vector<T> m_data;
+        T* m_data;
+        size_t m_size;
     };
 
     class ComponentTypeStorage
@@ -67,7 +75,7 @@ namespace ecs
         {
             TypeInfo(
                 ComponentTypeId _id,
-                std::function<ComponentDataBase*(size_t size)> _create,
+                std::function<ComponentDataBase*(void* ptr, size_t elements)> _create,
                 engine::vector<TypeInfo>& typeInfoStorage,
                 uint32_t _typeSizeBytes)
                 : id{ _id }
@@ -78,7 +86,7 @@ namespace ecs
             }
             ComponentTypeId id;
             uint32_t typeSizeBytes;
-            std::function<ComponentDataBase*(size_t size)> create;
+            std::function<ComponentDataBase*(void* ptr, size_t elements)> create;
         };
 
         template<typename T>
@@ -86,7 +94,12 @@ namespace ecs
         {
             static TypeInfo typeInfo(
                 GlobalComponentTypeId++, 
-                [](size_t size)->ComponentDataBase* { auto res = new ComponentData<T>(); res->resize(size); return res; },
+                [](void* ptr, size_t elements)->ComponentDataBase*
+                {
+                    auto comdataptr = new (ptr) T[elements];
+                    auto res = new ComponentData<T>(static_cast<T*>(ptr), elements);
+                    return res;
+                },
                 ComponentTypeStorage::instance().m_typeInfoStorage,
                 sizeof(T));
             return typeInfo.id;
