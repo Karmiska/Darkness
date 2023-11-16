@@ -8,6 +8,11 @@ namespace ecs
         m_ecs->addComponent(*this, componentTypeId);
     }
 
+    void Entity::addComponents(const ArcheTypeSet& typeIndexes)
+    {
+        m_ecs->addComponents(*this, typeIndexes);
+    }
+
     bool Entity::hasComponent(ComponentTypeId componentTypeId)
     {
         return m_ecs->hasComponent(*this, componentTypeId);

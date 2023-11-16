@@ -91,8 +91,9 @@ namespace engine
 		for (int i = 0; i < EcsTestEntityCount; ++i)
 		{
 			auto entity = m_ecs.createEntity();
-			entity.addComponent<EcsTransform>();
-			entity.addComponent<EcsRigidBody>();
+			entity.addComponents<EcsTransform, EcsRigidBody>();
+			//entity.addComponent<EcsTransform>();
+			//entity.addComponent<EcsRigidBody>();
 		}
 
 		DepthStencilOpDescription front;

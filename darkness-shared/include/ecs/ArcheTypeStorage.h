@@ -20,6 +20,7 @@ namespace ecs
     class BitSet
     {
         static constexpr size_t BitSetDataCount = (size_t)(((float)N / 64.0f)+0.5f);
+        static constexpr unsigned long EndIteratorValue = BitSetDataCount * 64;
     public:
         BitSet()
         {
@@ -111,77 +112,69 @@ namespace ecs
         }
 
     public:
-        struct Iterator
+        struct Iterator : public std::iterator<
+            std::forward_iterator_tag,  // iterator_category
+            uint64_t,                   // value_type
+            uint64_t,                   // difference_type
+            const uint64_t*,            // pointer
+            uint64_t>                    // reference
         {
-            using iterator_category = std::forward_iterator_tag;
-            using difference_type = std::ptrdiff_t;
-            using value_type = uint64_t;
-            using pointer = uint64_t*;
-            using reference = uint64_t;
-
             Iterator(const BitSet* set, uint16_t index)
                 : m_set{ set }
+                , m_block{ static_cast<unsigned long>(index / 64) }
                 , m_index{ index }
-            {}
+                , m_indexInternal{ static_cast<unsigned long>(index - (m_block * 64)) }
+            {
+                if (index == EndIteratorValue)
+                    return;
+                this->operator++();
+            }
 
             reference operator*() const { return m_index; }
             pointer operator->() { return &m_index; }
             Iterator& operator++()
             {
-                auto cont = m_index / 64;
-                auto bit = m_index - (cont * 64);
-                unsigned long index = bit + 1;
-                if (index > 63)
+                unsigned long long mask = m_set->m_data[m_block];
+                mask = mask >> m_indexInternal << m_indexInternal;
+                do
                 {
-                    index = 0;
-                    ++cont;
-                }
-                for (int i = cont; i < BitSetDataCount; ++i)
-                {
-                    auto ocp = (m_set->m_data[i] >> (uint64_t)index) << (uint64_t)index;
-                    if (ocp != 0)
+                    if (_BitScanForward64(&m_indexInternal, mask))
                     {
-
-                        if (_BitScanForward64(&index, ocp))
-                        {
-                            m_index = (i * 64) + index;
-                            return *this;
-                        }
+                        m_index = (m_block * 64) + m_indexInternal;
+                        ++m_indexInternal;
+                        return *this;
                     }
-                    index = 0;
-                }
-
-                m_index = BitSetDataCount * 64;
-                return *this;
+                    ++m_block;
+                    if (m_block >= BitSetDataCount)
+                    {
+                        m_index = EndIteratorValue;
+                        return *this;
+                    }
+                    mask = m_set->m_data[m_block];
+                    m_indexInternal = 0;
+                } while (true);
+                
             }
             Iterator operator++(int) { Iterator tmp = *this; ++(*this); return tmp; }
             friend bool operator== (const Iterator& a, const Iterator& b) { return a.m_index == b.m_index; };
             friend bool operator!= (const Iterator& a, const Iterator& b) { return a.m_index != b.m_index; };
+            friend bool operator< (const Iterator& a, const Iterator& b) { return a.m_index < b.m_index; };
 
         private:
             const BitSet* m_set;
-            uint64_t m_index;
+            uint16_t m_block;
+
+            unsigned long m_index;
+            unsigned long m_indexInternal;
         };
 
         Iterator begin() const
         {
-            for (int i = 0; i < BitSetDataCount; ++i)
-            {
-                auto& ocp = m_data[i];
-                if (ocp != 0)
-                {
-                    unsigned long index = 0;
-                    if (_BitScanForward64(&index, ocp))
-                    {
-                        return Iterator(this, (i * 64) + index);
-                    }
-                }
-            }
             return Iterator(this, 0);
         }
         Iterator end() const
         {
-            return Iterator(this, BitSetDataCount * 64);
+            return Iterator(this, EndIteratorValue);
         }
     private:
         uint64_t m_data[BitSetDataCount];

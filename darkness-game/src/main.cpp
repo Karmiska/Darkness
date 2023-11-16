@@ -191,6 +191,7 @@ class EcsTransform
 {
 public:
 	EcsTransform()
+		//: position{ 0.0f, 0.0f, 0.0f, 1.0f }
 		: position{ arandomFloat(), arandomFloat(), arandomFloat(), 1.0f }
 	{}
 
@@ -221,6 +222,7 @@ public:
 	float mass;
 
 	EcsRigidBody()
+		//: initialvelocity{ 0.0f, 0.0f, 0.0f }
 		: initialvelocity{ arandomFloat() / 300.0f, arandomFloat() / 300.0f, arandomFloat() / 300.0f }
 		, mass{ 1.0f }
 		, velocity{ initialvelocity }
@@ -360,36 +362,120 @@ int doWork()
 
 	{
 		ecs::Ecs ecs;
+		
+#if 0
+		int entityIndex = 0;
+		struct Selected {};
+
+		for (int i = 0; i < 5; ++i)
+		{
+			auto entity = ecs.createEntity();
+			entity.addComponents<EcsRigidBody>();
+			entity.addComponents<EcsTransform>();
+			entity.component<EcsTransform>().position = Vector4f{
+				static_cast<float>(entityIndex),
+				static_cast<float>(entityIndex+1), 
+				static_cast<float>(entityIndex+2), 
+				static_cast<float>(entityIndex+3) };
+			++entityIndex;
+		}
+
+		for (int i = 0; i < 5; ++i)
+		{
+			auto entity = ecs.createEntity();
+			entity.addComponents<EcsTransform>();
+			entity.addComponents<Selected>();
+			entity.component<EcsTransform>().position = Vector4f{
+				static_cast<float>(entityIndex),
+				static_cast<float>(entityIndex + 1),
+				static_cast<float>(entityIndex + 2),
+				static_cast<float>(entityIndex + 3) };
+			entity.addComponents<EcsRigidBody>();
+			++entityIndex;
+		}
+
+		for (int i = 0; i < 5; ++i)
+		{
+			auto entity = ecs.createEntity();
+			entity.addComponents<EcsTransform, Selected>();
+			entity.component<EcsTransform>().position = Vector4f{
+				static_cast<float>(entityIndex),
+				static_cast<float>(entityIndex + 1),
+				static_cast<float>(entityIndex + 2),
+				static_cast<float>(entityIndex + 3) };
+			++entityIndex;
+		}
+
+		for (int i = 0; i < 5; ++i)
+		{
+			auto entity = ecs.createEntity();
+			entity.addComponents<EcsTransform>();
+			entity.component<EcsTransform>().position = Vector4f{
+				static_cast<float>(entityIndex),
+				static_cast<float>(entityIndex + 1),
+				static_cast<float>(entityIndex + 2),
+				static_cast<float>(entityIndex + 3) };
+			entity.addComponents<EcsRigidBody>();
+			++entityIndex;
+		}
+
+		ecs.query([](EcsTransform& transform, Selected selected)
+			{
+				LOG("Transform: [%f, %f, %f, %f]",
+				transform.position.x,
+				transform.position.y,
+				transform.position.z,
+				transform.position.w);
+			});
+#endif
+
+
 
 		LARGE_INTEGER freq;
 		QueryPerformanceFrequency(&freq);
+
+		LARGE_INTEGER prewarm;
+		QueryPerformanceCounter(&prewarm);
+		ecs.prewarmArcheType<EcsTransform, EcsRigidBody, A, B>(5ull * 1024ull * 1024ull * 1024ull);
+		//ecs.prewarmArcheType<EcsTransform, EcsRigidBody, A, B>(1024ull * 1024ull);
+
+		//void* mem = malloc(5ull * 1024ull * 1024ull * 1024ull);
 
 		LARGE_INTEGER start;
 		QueryPerformanceCounter(&start);
 		for (int i = 0; i < DataCount; ++i)
 		{
 			auto entity = ecs.createEntity();
-			entity.addComponent<EcsTransform>();
-			entity.addComponent<EcsRigidBody>();
+
+			//entity.addComponents<EcsTransform>();
+			//entity.addComponent<EcsRigidBody>();
+			//entity.addComponents<A>();
+			//entity.addComponent<B>();
+			// 
+			// 
+			entity.addComponents<EcsTransform, EcsRigidBody, A, B > ();
 			
-			bool hasA = entity.hasComponent<A>();
-			bool hasB = entity.hasComponent<B>();
+			//entity.addComponent<EcsTransform>();
 			
-			entity.addComponent<A>();
-			entity.addComponent<B>();
+			//
+			////bool hasA = entity.hasComponent<A>();
+			////bool hasB = entity.hasComponent<B>();
+			//
+			//entity.addComponent<A>();
+			
 
 			
-			hasA = entity.hasComponent<A>();
-			hasB = entity.hasComponent<B>();
-			
-			entity.component<EcsTransform>().position = Vector4f{ 0.0f, 0.0f, 0.0f, 0.0f };
-			entity.component<EcsRigidBody>().mass = 1500.0f;
-			
-			entity.removeComponent<A>();
-			entity.removeComponent<B>();
-			
-			hasA = entity.hasComponent<A>();
-			hasB = entity.hasComponent<B>();
+			//hasA = entity.hasComponent<A>();
+			//hasB = entity.hasComponent<B>();
+			//
+			//entity.component<EcsTransform>().position = Vector4f{ 0.0f, 0.0f, 0.0f, 0.0f };
+			//entity.component<EcsRigidBody>().mass = 1500.0f;
+			//
+			//entity.removeComponent<A>();
+			//entity.removeComponent<B>();
+			//
+			//hasA = entity.hasComponent<A>();
+			//hasB = entity.hasComponent<B>();
 		}
 
 		//for (int i = 0; i < DataCount; ++i)
@@ -425,16 +511,26 @@ int doWork()
 		LOG("Called: %i times", called.load());
 #endif
 
-		LOG("Testing with: %zu entities", DataCount);
+		LOG_PURE("Testing with: %zu entities", DataCount);
 
 		LARGE_INTEGER measure;
+		measure.QuadPart = start.QuadPart - prewarm.QuadPart;
+		measure.QuadPart *= 1000;
+		LOG_PURE("Prewarming took: %f ms", static_cast<float>(static_cast<double>(measure.QuadPart) / static_cast<double>(freq.QuadPart)));
+
 		measure.QuadPart = populated.QuadPart - start.QuadPart;
 		measure.QuadPart *= 1000;
-		LOG("Populating took: %f ms", static_cast<float>(static_cast<double>(measure.QuadPart) / static_cast<double>(freq.QuadPart)));
+		LOG_PURE("Populating took: %f ms", static_cast<float>(static_cast<double>(measure.QuadPart) / static_cast<double>(freq.QuadPart)));
 
 		measure.QuadPart = simulated.QuadPart - populated.QuadPart;
 		measure.QuadPart *= 1000;
-		LOG("Simulating took: %f ms", static_cast<float>(static_cast<double>(measure.QuadPart) / static_cast<double>(freq.QuadPart)));
+		LOG_PURE("Simulating took: %f ms", static_cast<float>(static_cast<double>(measure.QuadPart) / static_cast<double>(freq.QuadPart)));
+
+		measure.QuadPart = simulated.QuadPart - prewarm.QuadPart;
+		measure.QuadPart *= 1000;
+		LOG_PURE("Combined: %f ms", static_cast<float>(static_cast<double>(measure.QuadPart) / static_cast<double>(freq.QuadPart)));
+
+		//free(mem);
 	}
 
 #if 0
@@ -508,6 +604,7 @@ int doWork()
 	}
 #endif
 #endif
+	
 
     return 0;
 }

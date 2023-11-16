@@ -61,6 +61,25 @@ namespace ecs
             addComponent(ComponentTypeStorage::typeId<typename std::remove_reference<T>::type>());
         }
 
+        template<typename... T>
+        typename std::enable_if<sizeof...(T) == 0>::type
+            unpackTypes(ArcheTypeSet& result) { }
+
+        template<typename T, typename... Rest>
+        void unpackTypes(ArcheTypeSet& result)
+        {
+            result.set(ComponentTypeStorage::typeId<typename std::remove_reference<T>::type>());
+            unpackTypes<Rest& ...>(result);
+        }
+
+        template<typename T, typename... Rest>
+        void addComponents()
+        {
+            ArcheTypeSet typeIndexes;
+            unpackTypes<T, Rest...>(typeIndexes);
+            addComponents(typeIndexes);
+        }
+
         template<typename T>
         bool hasComponent()
         {
@@ -81,6 +100,7 @@ namespace ecs
         }
 
         void addComponent(ComponentTypeId componentTypeId);
+        void addComponents(const ArcheTypeSet& typeIndexes);
         bool hasComponent(ComponentTypeId componentTypeId);
         void removeComponent(ComponentTypeId componentTypeId);
         void* component(ComponentTypeId componentTypeId);
