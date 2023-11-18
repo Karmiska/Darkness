@@ -17,7 +17,7 @@ using namespace application;
 #include <cmath>
 
 //constexpr size_t DataCount = 100'000'000;
-constexpr size_t DataCount = 500'000'000;
+constexpr size_t DataCount = 100'000'000;
 //constexpr size_t DataCount = 100;
 
 #include "engine/Ecs.h"
@@ -194,15 +194,15 @@ public:
 class EcsTransform
 {
 public:
-	//EcsTransform() = default;
+	EcsTransform() = default;
 	//EcsTransform()
-	//	: position{ 0.0f, 0.0f, 0.0f, 1.0f }
-	//	//: position{ arandomFloat(), arandomFloat(), arandomFloat(), 1.0f }
+	//	//: position{ 0.0f, 0.0f, 0.0f, 1.0f }
+	//	: position{ arandomFloat(), arandomFloat(), arandomFloat(), 1.0f }
 	//{}
 
-	//EcsTransform(const Vector4f& _position)
-	//	: position{ _position }
-	//{}
+	EcsTransform(const Vector4f& _position)
+		: position{ _position }
+	{}
 
 	EcsTransform operator+(const EcsTransform& tr)
 	{
@@ -228,8 +228,8 @@ public:
 
 	//EcsRigidBody() = default;
 	//EcsRigidBody()
-	//	: initialvelocity{ 0.0f, 0.0f, 0.0f }
-	//	//: initialvelocity{ arandomFloat() / 300.0f, arandomFloat() / 300.0f, arandomFloat() / 300.0f }
+	//	//: initialvelocity{ 0.0f, 0.0f, 0.0f }
+	//	: initialvelocity{ arandomFloat() / 300.0f, arandomFloat() / 300.0f, arandomFloat() / 300.0f }
 	//	, mass{ 1.0f }
 	//	, velocity{ initialvelocity }
 	//{}
@@ -442,7 +442,7 @@ int doWork()
 
 		LARGE_INTEGER prewarm;
 		QueryPerformanceCounter(&prewarm);
-		ecs.prewarmArcheType<EcsTransform, EcsRigidBody, A, B>(25ull * 1024ull * 1024ull * 1024ull);
+		//ecs.prewarmArcheType<EcsTransform, EcsRigidBody, A, B>(5ull * 1024ull * 1024ull * 1024ull);
 		//ecs.prewarmArcheType<EcsTransform, EcsRigidBody, A, B>(1024ull * 1024ull);
 
 		//void* mem = malloc(5ull * 1024ull * 1024ull * 1024ull);
@@ -509,7 +509,10 @@ int doWork()
 
 				//transform += randomEntityTransform;
 				rigidBody.simulate(gravityWell, transform, 1000.0f / 60.0f);
-				//transform = Vector4f{ 0.1f, 0.1f, 0.1f, 0.1f };
+
+				//Vector4f tmp{ 0.1f, 0.1f, 0.1f, 0.1f };
+				//__movsq((PDWORD64)&transform, (PDWORD64)&tmp, 2);
+				//transform.position = Vector4f{ 0.1f, 0.1f, 0.1f, 0.1f };
 				//rigidBody.mass += 0.1f;
 				//rigidBody.velocity += Vector3f{ 0.1f, 0.1f, 0.1f };
 			});
