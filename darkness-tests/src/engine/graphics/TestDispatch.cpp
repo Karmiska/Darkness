@@ -44,6 +44,6 @@ TEST(TestDraw, DispatchBasic)
 
         env.submit(cmdBuffer);
         env.present();
-    } while (env.canContinue(true));
+    } while (env.canContinue(false));
     env.device().waitForIdle();
 }

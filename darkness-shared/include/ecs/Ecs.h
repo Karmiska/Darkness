@@ -260,7 +260,6 @@ namespace ecs
         {
             // find out the archetype
             ComponentArcheTypeId currentArcheType = archeTypeIdFromEntityId(entity.entityId);
-            auto entityIndex = entityIndexFromEntityId(entity.entityId);
             auto chunkIndex = chunkIndexFromEntityId(entity.entityId);
 
             return m_chunks[currentArcheType][chunkIndex]->componentDataPointer(componentTypeId);

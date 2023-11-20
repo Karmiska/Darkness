@@ -6,7 +6,7 @@ public static class DarknessSettings
 {
     public const Platform platform = Platform.win64;
     public const DevEnv devEnv = DevEnv.vs2022;
-    public const Optimization optimization = Optimization.Debug | Optimization.Release;
+    public const Optimization optimization = Optimization.Debug | Optimization.Release | Optimization.Retail;
     public const OutputType outputType = OutputType.Dll;
     public const Blob blob = Blob.NoBlob;
 }
@@ -77,6 +77,11 @@ public abstract class DarknessBaseProject : Project
             case Optimization.Release:
                 {
                     conf.Options.Add(Options.Vc.Compiler.RuntimeLibrary.MultiThreadedDLL);
+                    break;
+                }
+            case Optimization.Retail:
+                {
+                    conf.Defines.Add("RETAIL");
                     break;
                 }
         }

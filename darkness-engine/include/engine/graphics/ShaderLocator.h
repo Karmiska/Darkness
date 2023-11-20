@@ -24,8 +24,11 @@ namespace engine
             auto repl = shaderPath.find("$DATA_ROOT");
             if (repl != engine::string::npos)
             {
-                auto dataRoot = engine::pathClean(engine::pathJoin(engine::pathExtractFolder(engine::getExecutableDirectory()), "..\\..\\..\\data"));
-                shaderPath.replace(repl, 10, dataRoot);
+                auto dataRootStrLen = string("$DATA_ROOT\\").length();
+                auto dataRoot = engine::pathClean(engine::pathJoin(engine::pathExtractFolder(engine::getExecutableDirectory()),
+                    shaderPath.substr(dataRootStrLen, shaderPath.length() - dataRootStrLen)));
+                    //"..\\..\\..\\data"));
+                shaderPath = dataRoot;// .replace(repl, 10, dataRoot);
             }
 
             string apiPath;

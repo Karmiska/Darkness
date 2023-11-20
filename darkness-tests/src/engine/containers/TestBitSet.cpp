@@ -8,8 +8,7 @@
 
 TEST(TestBitSet, BitSetIterator8BitSpecialization)
 {
-    
-
+    // check that empty bitset works
     {
         BitSet<8> test;
         int i = 0;
@@ -18,17 +17,7 @@ TEST(TestBitSet, BitSetIterator8BitSpecialization)
         EXPECT_EQ(i, 0);
     }
 
-    {
-        BitSet<8> test;
-        test.set(0);
-        engine::vector<int> tmp;
-        for (auto&& bit : test)
-            tmp.emplace_back(bit);
-        EXPECT_EQ(tmp.size(), 1);
-        EXPECT_EQ(tmp[0], 0);
-    }
-
-    // test all iterator settings
+    // test all iterator values
     {
         int set = 8;
         int maxn = 1 << set;
@@ -54,6 +43,21 @@ TEST(TestBitSet, BitSetIterator8BitSpecialization)
         }
     }
 
+    // test invalid sets
+#ifdef RETAIL
+    {
+        BitSet<8> test;
+        test.set(10);
+        test.set(-3);
+        for (int i = 0; i < 8; ++i)
+            EXPECT_EQ(test.get(i), 0);
+    }
+#endif
+}
+
+TEST(TestBitSet, BitSetIterator16BitSpecialization)
+{
+    // test all iterator values
     {
         int set = 16;
         int maxn = 1 << set;
@@ -79,6 +83,21 @@ TEST(TestBitSet, BitSetIterator8BitSpecialization)
         }
     }
 
+    // test invalid sets
+#ifdef RETAIL
+    {
+        BitSet<16> test;
+        test.set(70000);
+        test.set(-3);
+        for (int i = 0; i < 8; ++i)
+            EXPECT_EQ(test.get(i), 0);
+    }
+#endif
+}
+
+TEST(TestBitSet, BitSetIterator32BitSpecialization)
+{
+    // some values
     {
         uint64_t set = 32;
         uint64_t maxn = (uint64_t)1 << set;
@@ -104,34 +123,7 @@ TEST(TestBitSet, BitSetIterator8BitSpecialization)
         }
     }
 
-#if 0
-    {
-        for (int i = 0; i < 9; ++i)
-        {
-            uint8_t _mask8 = mask8((uint8_t)i);
-            LOG("index: %i = %s", i, std::bitset<8>(_mask8).to_string().c_str());
-        }
-
-        for (int i = 0; i < 17; ++i)
-        {
-            uint16_t _mask16 = mask16((uint16_t)i);
-            LOG("index: %i = %s", i, std::bitset<16>(_mask16).to_string().c_str());
-        }
-
-        for (int i = 0; i < 33; ++i)
-        {
-            uint32_t _mask32 = mask32((uint32_t)i);
-            LOG("index: %i = %s", i, std::bitset<32>(_mask32).to_string().c_str());
-        }
-
-        for (int i = 0; i < 65; ++i)
-        {
-            uint64_t _mask64 = mask64((uint64_t)i);
-            LOG("index: %i = %s", i, std::bitset<64>(_mask64).to_string().c_str());
-        }
-    }
-#endif
-
+    // test some edge cases
     {
         BitSet<32> test;
         test.set(0);
@@ -150,7 +142,33 @@ TEST(TestBitSet, BitSetIterator8BitSpecialization)
         EXPECT_EQ(vals[3], 31);
 
     }
+}
 
+TEST(TestBitSet, BitSetIterator64BitSpecialization)
+{
+    // test some edge cases
+    {
+        BitSet<64> test;
+        test.set(0);
+        test.set(1);
+        test.set(62);
+        test.set(63);
+
+        engine::vector<int> vals;
+        for (auto&& v : test)
+            vals.emplace_back(v);
+
+        EXPECT_EQ(vals.size(), 4);
+        EXPECT_EQ(vals[0], 0);
+        EXPECT_EQ(vals[1], 1);
+        EXPECT_EQ(vals[2], 62);
+        EXPECT_EQ(vals[3], 63);
+    }
+}
+
+TEST(TestBitSet, BitSetIterator128BitSpecialization)
+{
+    // test some edge cases
     {
         BitSet<128> test;
         test.set(0);
@@ -175,7 +193,11 @@ TEST(TestBitSet, BitSetIterator8BitSpecialization)
         EXPECT_EQ(vals[6], 127);
 
     }
+}
 
+TEST(TestBitSet, BitSetIterator512Bits)
+{
+    // test some edge cases
     {
         BitSet<512> test;
         test.set(0);

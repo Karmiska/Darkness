@@ -12,7 +12,7 @@ class TestImage : public ::testing::Test
 {
 };
 
-TEST(TestImage, DISABLED_WriteAndReadImage)
+TEST(TestImage, WriteAndReadImage)
 {
     const string filename = "ImageTest.dds";
 

@@ -44,17 +44,20 @@ namespace engine
 
         void set(int index)
         {
-            m_data[index / 64] |= (uint64_t)1u << (uint64_t)index - (((uint64_t)index / (uint64_t)64ull) * (uint64_t)64ull);
+            ASSERT(index >= 0 && index < N, "Setting bit: %i to BitSet<%i> is invalid. Correct index range: 0 .. %i", N, index, N-1);
+            m_data[index / 64] |= ((uint64_t)1u << ((uint64_t)index - (((uint64_t)index / (uint64_t)64ull) * (uint64_t)64ull)));
         }
 
         void clear(int index)
         {
-            m_data[index / 64] &= ~((uint64_t)1u << (uint64_t)index - (((uint64_t)index / (uint64_t)64ull) * (uint64_t)64ull));
+            ASSERT(index >= 0 && index < N, "Setting bit: %i to BitSet<%i> is invalid. Correct index range: 0 .. %i", N, index, N - 1);
+            m_data[index / 64] &= ~((uint64_t)1u << ((uint64_t)index - (((uint64_t)index / (uint64_t)64ull) * (uint64_t)64ull)));
         }
 
         bool get(int index) const
         {
-            return m_data[index / 64] & ((uint64_t)1u << (uint64_t)index - (((uint64_t)index / (uint64_t)64ull) * (uint64_t)64ull));
+            ASSERT(index >= 0 && index < N, "Setting bit: %i to BitSet<%i> is invalid. Correct index range: 0 .. %i", N, index, N - 1);
+            return m_data[index / 64] & ((uint64_t)1u << ((uint64_t)index - (((uint64_t)index / (uint64_t)64ull) * (uint64_t)64ull)));
         }
 
         bool operator==(const BitSet& set) const
@@ -199,16 +202,19 @@ namespace engine
 
         void set(int index)
         {
+            ASSERT(index >= 0 && index < 8, "Setting bit: %i to BitSet<8> is invalid. Correct index range: 0 .. 7", index);
             m_data |= (uint8_t)1u << (uint8_t)index;
         }
 
         void clear(int index)
         {
+            ASSERT(index >= 0 && index < 8, "Clearing bit: %i to BitSet<8> is invalid. Correct index range: 0 .. 7", index);
             m_data &= ~((uint8_t)1u << (uint8_t)index);
         }
 
         bool get(int index) const
         {
+            ASSERT(index >= 0 && index < 8, "Clearing bit: %i to BitSet<8> is invalid. Correct index range: 0 .. 7", index);
             return m_data & ((uint8_t)1u << (uint8_t)index);
         }
 
@@ -332,16 +338,19 @@ namespace engine
 
         void set(int index)
         {
+            ASSERT(index >= 0 && index < 16, "Setting bit: %i to BitSet<16> is invalid. Correct index range: 0 .. 15", index);
             m_data |= (uint16_t)1u << (uint16_t)index;
         }
 
         void clear(int index)
         {
+            ASSERT(index >= 0 && index < 16, "Setting bit: %i to BitSet<16> is invalid. Correct index range: 0 .. 15", index);
             m_data &= ~((uint16_t)1u << (uint16_t)index);
         }
 
         bool get(int index) const
         {
+            ASSERT(index >= 0 && index < 16, "Setting bit: %i to BitSet<16> is invalid. Correct index range: 0 .. 15", index);
             return m_data & ((uint16_t)1u << (uint16_t)index);
         }
 
@@ -465,16 +474,19 @@ namespace engine
 
         void set(int index)
         {
+            ASSERT(index >= 0 && index < 32, "Setting bit: %i to BitSet<32> is invalid. Correct index range: 0 .. 32", index);
             m_data |= (uint32_t)1u << (uint32_t)index;
         }
 
         void clear(int index)
         {
+            ASSERT(index >= 0 && index < 32, "Setting bit: %i to BitSet<32> is invalid. Correct index range: 0 .. 32", index);
             m_data &= ~((uint32_t)1u << (uint32_t)index);
         }
 
         bool get(int index) const
         {
+            ASSERT(index >= 0 && index < 32, "Setting bit: %i to BitSet<32> is invalid. Correct index range: 0 .. 32", index);
             return m_data & ((uint32_t)1u << (uint32_t)index);
         }
 
@@ -598,16 +610,19 @@ namespace engine
 
         void set(int index)
         {
+            ASSERT(index >= 0 && index < 64, "Setting bit: %i to BitSet<64> is invalid. Correct index range: 0 .. 63", index);
             m_data |= (uint64_t)1u << (uint64_t)index;
         }
 
         void clear(int index)
         {
+            ASSERT(index >= 0 && index < 64, "Setting bit: %i to BitSet<64> is invalid. Correct index range: 0 .. 63", index);
             m_data &= ~((uint64_t)1u << (uint64_t)index);
         }
 
         bool get(int index) const
         {
+            ASSERT(index >= 0 && index < 64, "Setting bit: %i to BitSet<64> is invalid. Correct index range: 0 .. 63", index);
             return m_data & ((uint64_t)1u << (uint64_t)index);
         }
 
@@ -745,6 +760,7 @@ namespace engine
 
         void set(int index)
         {
+            ASSERT(index >= 0 && index < 128, "Setting bit: %i to BitSet<128> is invalid. Correct index range: 0 .. 127", index);
             index < 64 ? 
                 m_data[0] |= (uint64_t)1u << (uint64_t)index :
                 m_data[1] |= (uint64_t)1u << (uint64_t)(index-64);
@@ -752,6 +768,7 @@ namespace engine
 
         void clear(int index)
         {
+            ASSERT(index >= 0 && index < 128, "Setting bit: %i to BitSet<128> is invalid. Correct index range: 0 .. 127", index);
             index < 64 ?
                 m_data[0] &= ~((uint64_t)1u << (uint64_t)index) :
                 m_data[1] &= ~((uint64_t)1u << (uint64_t)(index - 64));
@@ -759,6 +776,7 @@ namespace engine
 
         bool get(int index) const
         {
+            ASSERT(index >= 0 && index < 128, "Setting bit: %i to BitSet<128> is invalid. Correct index range: 0 .. 127", index);
             return index < 64 ?
                 m_data[0] & ((uint64_t)1u << (uint64_t)index) :
                 m_data[0] & ((uint64_t)1u << (uint64_t)(index-64));

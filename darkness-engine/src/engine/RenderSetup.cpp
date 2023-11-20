@@ -91,7 +91,9 @@ namespace engine
         , m_swapChain{ m_device.createSwapChain(false, true) }
         , m_renderSemaphore{ m_device.createSemaphore(), m_device.createSemaphore() }
         , m_presentSemaphore{ m_device.createSemaphore() }
+        , m_backBufferIndex{ 0 }
     { 
+        createSwapChainSRVs();
     }
 
     Device& RenderSetup::device()

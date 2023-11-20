@@ -442,7 +442,7 @@ int doWork()
 
 		LARGE_INTEGER prewarm;
 		QueryPerformanceCounter(&prewarm);
-		//ecs.prewarmArcheType<EcsTransform, EcsRigidBody, A, B>(5ull * 1024ull * 1024ull * 1024ull);
+		ecs.prewarmArcheType<EcsTransform, EcsRigidBody, A, B>(5ull * 1024ull * 1024ull * 1024ull);
 		//ecs.prewarmArcheType<EcsTransform, EcsRigidBody, A, B>(1024ull * 1024ull);
 
 		//void* mem = malloc(5ull * 1024ull * 1024ull * 1024ull);

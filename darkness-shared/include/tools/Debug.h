@@ -23,9 +23,12 @@ void DebugAssert(const char* condition, const char* location, const char* msg, .
 #define DBGTOSTRING(x) DBGSTRINGIFY(x)
 #define DBGLOC __FILE__ "(" DBGTOSTRING(__LINE__) "): "
 
-
+#ifndef RETAIL
 #define ASSERT(condition, ...) \
     (void)((condition) || (DebugAssert(#condition, DBGLOC, __VA_ARGS__),0))
+#else
+#define ASSERT(condition, ...)
+#endif
 
 
 #define LOG(...) Debug(DBGLOC, __VA_ARGS__)

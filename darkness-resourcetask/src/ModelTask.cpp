@@ -495,7 +495,7 @@ namespace resource_task
         * \param pData Pointer to the memory block to write.
         * \param pSize Size (in bytes) of the memory block to write.
         * \return The number of bytes written in the stream. */
-        int Write(const void* pData, int pSize) override
+        size_t Write(const void* pData, FbxUInt64 pSize) override
         {
             ASSERT(m_position + pSize <= m_bytes, "Tried to write over the allocated buffer");
             ASSERT(m_bufferWrite != nullptr, "FbxStream has not been created with write");
@@ -508,7 +508,7 @@ namespace resource_task
         * \param pData Pointer to the memory block where the read bytes are stored.
         * \param pSize Number of bytes read from the stream.
         * \return The actual number of bytes successfully read from the stream. */
-        int Read(void* pData, int pSize) const override
+        size_t Read(void* pData, FbxUInt64 pSize) const override
         {
             //ASSERT(m_position + pSize <= m_bytes, "Tried to read over the allocated buffer");
             auto bytesToRead = std::min(m_bytes - m_position, static_cast<size_t>(pSize));
@@ -623,14 +623,14 @@ namespace resource_task
 
         /** Get the current stream position.
         * \return Current number of bytes from the beginning of the stream. */
-        long GetPosition() const override
+        FbxInt64 GetPosition() const override
         {
             return m_position;
         }
 
         /** Set the current stream position.
         * \param pPosition Number of bytes from the beginning of the stream to seek to. */
-        void SetPosition(long pPosition) override
+        void SetPosition(FbxInt64 pPosition) override
         {
             m_position = pPosition;
         }

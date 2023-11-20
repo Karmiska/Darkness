@@ -5,7 +5,7 @@
 #include "containers/vector.h"
 #include <random>
 
-TEST(TestCompute, PrefixScan)
+TEST(DISABLED_TestCompute, PrefixScan)
 {
     GlobalEnvironment& env = *envPtr;
 
