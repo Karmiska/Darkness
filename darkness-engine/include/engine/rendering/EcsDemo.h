@@ -1,6 +1,6 @@
 #pragma once
 
-#define ECSTEST22
+#undef ECSTEST22
 
 #include "engine/graphics/Pipeline.h"
 #include "shaders/core/shape/RenderCubes.h"

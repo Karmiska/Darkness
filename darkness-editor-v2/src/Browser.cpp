@@ -200,7 +200,7 @@ namespace editor
 		, m_horizontalLayout{ engine::make_shared<ui::UiLayout>(this, m_layoutSettingsManager->settings("horizontalLayout"), ui::UiLayoutDirection::Horizontal) }
 		, m_model{ engine::make_shared<BrowserDataModel>(engine::pathClean("C:/Users/aleks/Documents/TestDarknessProject/content")) }
 		, m_listView{ engine::make_shared<BrowserListView>(this) }
-		, m_fileViewModel{ engine::make_shared<BrowserFileViewDataModel>(this, engine::pathClean("C:/Users/aleks/Documents/TestDarknessProject/content/pbr/greasypan")) }
+		, m_fileViewModel{ engine::make_shared<BrowserFileViewDataModel>(this, engine::pathClean("C:/Users/aleks/Documents/TestDarknessProject/content/pbr/bamboo")) }
 		, m_fileView{ engine::make_shared<BrowserFileView>(this) }
 	{
 		addChild(m_horizontalLayout);

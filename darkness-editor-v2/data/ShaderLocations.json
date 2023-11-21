@@ -3,7 +3,7 @@
     "float": [],
   "string": [
     {
-        "rootShaderPath": "$DATA_ROOT\\..\\..\\darkness-engine\\data\\shaders"
+        "rootShaderPath": "$DATA_ROOT\\..\\..\\..\\..\\darkness-engine\\data\\shaders"
     },
     {
         "apiShaderPathDX12": "dx12"
