@@ -200,6 +200,8 @@ namespace engine
             }
             workBufferSize /= PrefixSumShaderThreadGroupSize;
         }
+
+        m_work.emplace_back(WorkItem(m_device, size));
     }
 
     size_t PrefixSum::workCount(size_t size) const

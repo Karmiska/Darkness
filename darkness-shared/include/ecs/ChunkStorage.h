@@ -62,7 +62,8 @@ namespace ecs
     class ChunkStorage
     {
     private:
-        
+        ComponentTypeStorage& m_componentTypeStorage;
+        ArcheTypeStorage& m_archeTypeStorage;
         void* m_storageAllocation;
         
 
@@ -96,14 +97,18 @@ namespace ecs
 
         Chunk* allocateNewChunk(ComponentArcheTypeId archeType)
         {
-            auto chunk = new Chunk(archeType);
+            auto chunk = new Chunk(m_archeTypeStorage, archeType);
             auto chunkBytes = (chunk->elementSizeBytes() * chunk->capacity()) + chunk->typePaddingSizeBytes();
-            chunk->initialize(allocate(chunkBytes), chunkBytes);
+            chunk->initialize(m_componentTypeStorage, allocate(chunkBytes), chunkBytes);
             return chunk;
         }
     public:
-        ChunkStorage()
-            : m_storageAllocation{ nullptr }
+        ChunkStorage(
+            ComponentTypeStorage& componentTypeStorage, 
+            ArcheTypeStorage& archeTypeStorage)
+            : m_componentTypeStorage{ componentTypeStorage }
+            , m_archeTypeStorage{ archeTypeStorage }
+            , m_storageAllocation{ nullptr }
             , m_inUse{ 0 }
         {
             m_storageAllocation = _aligned_malloc(6ull * 1024ull * 1024ull * 1024ull, ChunkDataAlignment);

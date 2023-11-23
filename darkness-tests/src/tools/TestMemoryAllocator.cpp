@@ -14,7 +14,7 @@ engine::string debugRange(T& range, int index)
     return "[alignment: " + engine::string(std::to_string(indexToAlign(index)).c_str()) + ", count: " + engine::string(std::to_string(range.size()).c_str()) + "]";
 };
 
-TEST(TestMemoryAllocator, DISABLED_MemoryAllocator_PerformanceTest)
+TEST(TestMemoryAllocator, MemoryAllocator_PerformanceTest)
 {
     engine::vector<uint8_t> heap(3ull * 1024ull * 1024ull * 1024ull);
     ByteRange range(heap);

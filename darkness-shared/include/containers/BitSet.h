@@ -24,6 +24,213 @@ namespace engine
         return index >= 64ull ? 0ull : 0xffffffffffffffffull << index;
     }
 
+    class BitSetDynamic
+    {
+    public:
+        BitSetDynamic()
+            : m_data{ nullptr }
+            , m_dataCount{ 0 }
+            , m_size{ 0u }
+        {}
+
+        BitSetDynamic(size_t bitSize)
+            : m_data{ static_cast<uint64_t*>(_aligned_malloc(roundUpToMultiple(bitSize, 64), 64)) }
+            , m_dataCount{ roundUpToMultiple(bitSize, 64) / 64 }
+            , m_size{ bitSize }
+        {
+            memset(m_data, 0, sizeof(uint64_t) * m_dataCount);
+        }
+
+        BitSetDynamic(const BitSetDynamic& bitset)
+        {
+            m_data = static_cast<uint64_t*>(_aligned_malloc(roundUpToMultiple(bitset.m_size, 64), 64));
+            m_dataCount = bitset.m_dataCount;
+            m_size = bitset.m_size;
+            memcpy(m_data, bitset.m_data, m_dataCount * 64);
+        }
+
+        BitSetDynamic& operator=(const BitSetDynamic& bitset)
+        {
+            m_data = static_cast<uint64_t*>(_aligned_malloc(roundUpToMultiple(bitset.m_size, 64), 64));
+            m_dataCount = bitset.m_dataCount;
+            m_size = bitset.m_size;
+            memcpy(m_data, bitset.m_data, m_dataCount * 64);
+            return *this;
+        }
+
+        BitSetDynamic(BitSetDynamic&& bitset)
+            : m_data{ nullptr }
+            , m_dataCount{ 0 }
+            , m_size{ 0 }
+        {
+            std::swap(m_data, bitset.m_data);
+            std::swap(m_dataCount, bitset.m_dataCount);
+            std::swap(m_size, bitset.m_size);
+        }
+
+        BitSetDynamic& operator=(BitSetDynamic&& bitset)
+        {
+            std::swap(m_data, bitset.m_data);
+            std::swap(m_dataCount, bitset.m_dataCount);
+            std::swap(m_size, bitset.m_size);
+            return *this;
+        }
+
+        ~BitSetDynamic()
+        {
+            if (m_data)
+            {
+                _aligned_free(m_data);
+                m_data = nullptr;
+            }
+        }
+
+        void set(int index)
+        {
+            ASSERT(index >= 0 && index < m_size, "Setting bit: %i to BitSet<%i> is invalid. Correct index range: 0 .. %i", m_size, index, m_size - 1);
+            m_data[index / 64] |= ((uint64_t)1u << ((uint64_t)index - (((uint64_t)index / (uint64_t)64ull) * (uint64_t)64ull)));
+        }
+
+        void clear(int index)
+        {
+            ASSERT(index >= 0 && index < m_size, "Setting bit: %i to BitSet<%i> is invalid. Correct index range: 0 .. %i", m_size, index, m_size - 1);
+            m_data[index / 64] &= ~((uint64_t)1u << ((uint64_t)index - (((uint64_t)index / (uint64_t)64ull) * (uint64_t)64ull)));
+        }
+
+        bool get(int index) const
+        {
+            ASSERT(index >= 0 && index < m_size, "Setting bit: %i to BitSet<%i> is invalid. Correct index range: 0 .. %i", m_size, index, m_size - 1);
+            return m_data[index / 64] & ((uint64_t)1u << ((uint64_t)index - (((uint64_t)index / (uint64_t)64ull) * (uint64_t)64ull)));
+        }
+
+        bool operator==(const BitSetDynamic& set) const
+        {
+            for (int i = 0; i < m_dataCount; ++i)
+                if (m_data[i] != set.m_data[i])
+                    return false;
+            return true;
+        }
+
+        bool operator!=(const BitSetDynamic& set) const
+        {
+            return !(*this == set);
+        }
+
+        BitSetDynamic& operator&=(const BitSetDynamic& other) noexcept
+        {
+            for (int i = 0; i < m_dataCount; ++i)
+                m_data[i] &= other.m_data[i];
+
+            return *this;
+        }
+        BitSetDynamic& operator|=(const BitSetDynamic& other) noexcept
+        {
+            for (int i = 0; i < m_dataCount; ++i)
+                m_data[i] |= other.m_data[i];
+
+            return *this;
+        }
+        BitSetDynamic& operator^=(const BitSetDynamic& other) noexcept
+        {
+            for (int i = 0; i < m_dataCount; ++i)
+                m_data[i] ^= other.m_data[i];
+
+            return *this;
+        }
+
+        BitSetDynamic operator&(const BitSetDynamic& other) const noexcept
+        {
+            BitSetDynamic res = *this;
+
+            for (int i = 0; i < m_dataCount; ++i)
+                res.m_data[i] &= other.m_data[i];
+
+            return res;
+        }
+        BitSetDynamic operator|(const BitSetDynamic& other) const noexcept
+        {
+            BitSetDynamic res = *this;
+
+            for (int i = 0; i < m_dataCount; ++i)
+                res.m_data[i] |= other.m_data[i];
+
+            return res;
+        }
+        BitSetDynamic operator^(const BitSetDynamic& other) const noexcept
+        {
+            BitSetDynamic res = *this;
+
+            for (int i = 0; i < m_dataCount; ++i)
+                res.m_data[i] ^= other.m_data[i];
+
+            return res;
+        }
+
+    public:
+        struct Iterator : public std::iterator<
+            std::forward_iterator_tag,  // iterator_category
+            uint64_t,                   // value_type
+            uint64_t,                   // difference_type
+            const uint64_t*,            // pointer
+            uint64_t>                    // reference
+        {
+            Iterator(const BitSetDynamic* set, uint64_t index)
+                : m_set{ set }
+                , m_block{ 0u }
+                , m_index{ index }
+                , m_indexInternal{ static_cast<unsigned long>(index) }
+            {
+                if (index == m_set->m_size+1)
+                    return;
+                this->operator++();
+            }
+
+            reference operator*() const { return m_index; }
+            pointer operator->() { return &m_index; }
+            Iterator& operator++()
+            {
+                while (m_block < m_set->m_dataCount)
+                {
+                    unsigned long long mask = m_set->m_data[m_block];
+                    mask &= mask64(m_indexInternal);
+
+                    if (_BitScanForward64(&m_indexInternal, mask))
+                    {
+                        m_index = (m_block * 64) + m_indexInternal;
+                        ++m_indexInternal;
+                        return *this;
+                    }
+                    ++m_block;
+                }
+                m_index = m_set->m_size+1;
+                return *this;
+            }
+            Iterator operator++(int) { Iterator tmp = *this; ++(*this); return tmp; }
+            friend bool operator== (const Iterator& a, const Iterator& b) { return a.m_index == b.m_index; };
+            friend bool operator!= (const Iterator& a, const Iterator& b) { return a.m_index != b.m_index; };
+            friend bool operator< (const Iterator& a, const Iterator& b) { return a.m_index < b.m_index; };
+
+        private:
+            const BitSetDynamic* m_set;
+            uint64_t m_block;
+            uint64_t m_index;
+            unsigned long m_indexInternal;
+        };
+
+        Iterator begin() const
+        {
+            return Iterator(this, 0);
+        }
+        Iterator end() const
+        {
+            return Iterator(this, m_size+1);
+        }
+    private:
+        uint64_t* m_data;
+        size_t m_dataCount;
+        size_t m_size;
+    };
+
     template<auto N>
     class BitSet
     {

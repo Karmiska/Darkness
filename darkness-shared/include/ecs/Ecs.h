@@ -17,11 +17,16 @@ namespace ecs
 {
     #define VectorizationSize 64
 
+    class Entity;
+
     class Ecs
     {
     public:
         Ecs()
-            : m_emptyEntity{this, createEntityId(0, 0, InvalidArcheTypeId) }
+            : m_emptyEntity{ this, &m_componentTypeStorage, createEntityId(0, 0, InvalidArcheTypeId) }
+            , m_componentTypeStorage{}
+            , m_archeTypeStorage{ m_componentTypeStorage }
+            , m_chunkStorage{ m_componentTypeStorage, m_archeTypeStorage }
         {
         }
 
@@ -32,8 +37,27 @@ namespace ecs
 
         Entity getEntity(EntityId id)
         {
-            return Entity(this, id);
+            return Entity(this, &m_componentTypeStorage, id);
         };
+
+        ComponentTypeStorage& componentTypeStorage()
+        {
+            return m_componentTypeStorage;
+        }
+
+        ArcheTypeStorage& archeTypeStorage()
+        {
+            return m_archeTypeStorage;
+        }
+
+        void updateArcheTypeStorage(ComponentArcheTypeId id)
+        {
+            if (id >= m_chunks.size())
+            {
+                m_chunks.resize(id + 1);
+                //m_lastUsedChunk.resize(id + 1, -1);
+            }
+        }
 
     private:
 
@@ -51,7 +75,7 @@ namespace ecs
         template<typename T, typename... Rest>
         void unpackSystems(ArcheTypeSet& result)
         {
-            result.set(ComponentTypeStorage::typeId<typename std::remove_reference<T>::type>());
+            result.set(m_componentTypeStorage.typeId<typename std::remove_reference<T>::type>());
             unpackSystems<Rest& ...>(result);
         }
 
@@ -59,14 +83,14 @@ namespace ecs
         template<typename T>
         std::tuple<typename std::remove_reference<T>::type*> packComponentPointers(Chunk& chunk)
         {
-            return std::make_tuple<typename std::remove_reference<T>::type*>(chunk.componentDataPointer<typename std::remove_reference<T>::type>(ComponentTypeStorage::typeId<typename std::remove_reference<T>::type>()));
+            return std::make_tuple<typename std::remove_reference<T>::type*>(chunk.componentDataPointer<typename std::remove_reference<T>::type>(m_componentTypeStorage.typeId<typename std::remove_reference<T>::type>()));
         }
 
         template <typename T, typename Arg, typename... Args>
         std::tuple<typename std::remove_reference<T>::type*, typename std::remove_reference<Arg>::type*, Args...> packComponentPointers(Chunk& chunk)
         {
             return std::tuple_cat(
-                std::make_tuple<typename std::remove_reference<T>::type*>(chunk.componentDataPointer<typename std::remove_reference<T>::type>(ComponentTypeStorage::typeId<typename std::remove_reference<T>::type>())),
+                std::make_tuple<typename std::remove_reference<T>::type*>(chunk.componentDataPointer<typename std::remove_reference<T>::type>(m_componentTypeStorage.typeId<typename std::remove_reference<T>::type>())),
                 packComponentPointers<Arg, Args...>(chunk));
         }
 
@@ -92,7 +116,7 @@ namespace ecs
             unpackSystems<Args...>(typeIndexes);
 
             // get archetypes that have all of these component types
-            engine::vector<ComponentArcheTypeId> archetypes = ArcheTypeStorage::instance().archeTypesThatContain(typeIndexes);
+            engine::vector<ComponentArcheTypeId> archetypes = m_archeTypeStorage.archeTypesThatContain(typeIndexes);
 
             for (auto&& archetype : archetypes)
             {
@@ -143,23 +167,42 @@ namespace ecs
 
         void addComponent(Entity& entity, ComponentTypeId componentTypeId)
         {
-            modifyComponent(entity, ArcheType(archeTypeIdFromEntityId(entity.entityId), componentTypeId).id());
+            modifyComponent(entity, m_archeTypeStorage.archeType(archeTypeIdFromEntityId(entity.entityId), componentTypeId).id());
         }
 
         void addComponents(Entity& entity, const ArcheTypeSet& typeIndexes)
         {
             auto archeType = archeTypeIdFromEntityId(entity.entityId);
             if(archeType != InvalidArcheTypeId)
-                modifyComponent(entity, ArcheType(ArcheType(archeType).typeSet() | typeIndexes).id());
+                modifyComponent(entity, m_archeTypeStorage.archeType(m_archeTypeStorage.archeType(archeType).typeSet() | typeIndexes).id());
             else
-                modifyComponent(entity, ArcheType(typeIndexes).id());
+                modifyComponent(entity, m_archeTypeStorage.archeType(typeIndexes).id());
+        }
+
+        void addComponents(Entity& entity, const ArcheTypeSet& typeIndexes, ComponentArcheTypeId id)
+        {
+            auto archeType = archeTypeIdFromEntityId(entity.entityId);
+            if (archeType != InvalidArcheTypeId)
+                modifyComponent(entity, m_archeTypeStorage.archeType(m_archeTypeStorage.archeType(archeType).typeSet() | typeIndexes).id());
+            else
+                modifyComponent(entity, id);
+        }
+
+        void setComponents(Entity& entity, const ArcheTypeSet& typeIndexes)
+        {
+            setComponents(entity, m_archeTypeStorage.archeTypeIdFromSet(typeIndexes));
+        }
+
+        void setComponents(Entity& entity, ComponentArcheTypeId id)
+        {
+            modifyComponent(entity, id);
         }
 
         void removeComponent(Entity& entity, ComponentTypeId componentTypeId)
         {
-            auto archeTypeSet = ArcheType(archeTypeIdFromEntityId(entity.entityId)).typeSet();
+            auto archeTypeSet = m_archeTypeStorage.archeType(archeTypeIdFromEntityId(entity.entityId)).typeSet();
             archeTypeSet.clear(componentTypeId);
-            modifyComponent(entity, ArcheType(archeTypeSet).id());
+            modifyComponent(entity, m_archeTypeStorage.archeType(archeTypeSet).id());
         }
 
         void modifyComponent(Entity& entity, ComponentArcheTypeId newArcheTypeId)
@@ -199,35 +242,32 @@ namespace ecs
                 // if the chunk is now empty. remove it.
                 if (oldChunk->empty())
                 {
-                    if (m_lastUsedChunk[oldArcheTypeId] == oldChunkIndex)
-                        m_lastUsedChunk[oldArcheTypeId] = -1;
+                    //if (m_lastUsedChunk[oldArcheTypeId] == oldChunkIndex)
+                    //    m_lastUsedChunk[oldArcheTypeId] = -1;
+                    lastArcheTypeId = InvalidArcheTypeId;
+                    m_lastUsedChunk = nullptr;
                     m_chunkStorage.freeChunk(oldArcheTypeId, m_chunks[oldArcheTypeId][oldChunkIndex]);
                     m_chunks[oldArcheTypeId].erase(m_chunks[oldArcheTypeId].begin() + oldChunkIndex);
                 }
             }
         }
 
-        void updateArcheTypeStorage(ComponentArcheTypeId id)
-        {
-            if (id >= m_chunks.size())
-            {
-                m_chunks.resize(id + 1);
-                m_lastUsedChunk.resize(id + 1, -1);
-            }
-        }
+        
 
         EntityId allocateNewEntity(ComponentArcheTypeId archeTypeId)
         {
             // check if we can fit the new entity to last used chunk
-            auto& lastUsed = m_lastUsedChunk[archeTypeId];
-            if (lastUsed != -1)
-            {
-                auto ch = m_chunks[archeTypeId][lastUsed];
-                if (ch->available())
-                {
-                    return createEntityId(ch->allocate(), lastUsed, archeTypeId);
-                }
-            }
+            //auto& lastUsed = m_lastUsedChunk[archeTypeId];
+            //if (lastUsed != -1)
+            //{
+            //    auto ch = m_chunks[archeTypeId][lastUsed];
+            //    if (ch->available())
+            //    {
+            //        return createEntityId(ch->allocate(), lastUsed, archeTypeId);
+            //    }
+            //}
+            if(lastArcheTypeId == archeTypeId && m_lastUsedChunk->available())
+                return createEntityId(m_lastUsedChunk->allocate(), m_lastUsedChunkId, archeTypeId);
 
             // TODO: mark possible candidate chunks
             //       based on when chunks have had entities removed
@@ -239,20 +279,25 @@ namespace ecs
             //    auto ch = chunkList[i];
             //    if (ch->available())
             //    {
-            //        lastUsed = i;
+            //        m_lastUsedChunkId = i;
+            //        m_lastUsedChunk = ch;
+            //        lastArcheTypeId = archeTypeId;
             //        return createEntityId(ch->allocate(), i, archeTypeId);
             //    }
             //}
 
             // or create new chunk if one wasn't available
             chunkList.emplace_back(m_chunkStorage.allocateChunk(archeTypeId));
-            lastUsed = chunkList.size() - 1;
+            //lastUsed = chunkList.size() - 1;
+            m_lastUsedChunkId = chunkList.size() - 1;
+            m_lastUsedChunk = chunkList[m_lastUsedChunkId];
+            lastArcheTypeId = archeTypeId;
             return createEntityId(chunkList.back()->allocate(), chunkList.size() - 1, archeTypeId);
         }
 
         bool hasComponent(const Entity& entity, ComponentTypeId componentTypeId)
         {
-            ArcheType currentArcheType(archeTypeIdFromEntityId(entity.entityId));
+            auto currentArcheType = m_archeTypeStorage.archeType(archeTypeIdFromEntityId(entity.entityId));
             return currentArcheType.contains(componentTypeId);
         }
 
@@ -296,7 +341,7 @@ namespace ecs
             typeSet.set(typeId);
 
             // get archetypes that have all of these component types
-            std::vector<ComponentArcheTypeId> archetypes = ArcheTypeStorage::instance().archeTypesThatContain(typeSet);
+            std::vector<ComponentArcheTypeId> archetypes = m_archeTypeStorage.archeTypesThatContain(typeSet);
 
             auto dst = data;
             for (auto&& archetype : archetypes)
@@ -325,7 +370,7 @@ namespace ecs
         template<typename T, typename... Rest>
         void unpackTypes(ArcheTypeSet& result)
         {
-            result.set(ComponentTypeStorage::typeId<typename std::remove_reference<T>::type>());
+            result.set(m_componentTypeStorage.typeId<typename std::remove_reference<T>::type>());
             unpackTypes<Rest& ...>(result);
         }
 
@@ -335,16 +380,24 @@ namespace ecs
             ArcheTypeSet typeSet;
             unpackTypes<T, Rest...>(typeSet);
 
-            auto id = ArcheTypeStorage::instance().archeTypeIdFromSet(typeSet);
+            auto id = m_archeTypeStorage.archeTypeIdFromSet(typeSet);
             m_chunkStorage.reserve(id, bytes / PreferredChunkSizeBytes);
         }
 
     private:
+        friend class Entity;
         Entity m_emptyEntity;
         engine::vector<engine::vector<Chunk*>> m_chunks;
-        engine::vector<int> m_lastUsedChunk;
+        //engine::vector<int> m_lastUsedChunk;
+
+        ComponentArcheTypeId lastArcheTypeId;
+        Chunk* m_lastUsedChunk;
+        int m_lastUsedChunkId;
+
+        ComponentTypeStorage m_componentTypeStorage;
+        ArcheTypeStorage m_archeTypeStorage;
         ChunkStorage m_chunkStorage;
-        
+
         //engine::vector<EntityId> m_entities;
 };
 }

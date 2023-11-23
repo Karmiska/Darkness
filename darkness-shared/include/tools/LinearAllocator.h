@@ -5,11 +5,11 @@
 
 namespace tools
 {
-    class LinearAllocator : public OffsetAllocatorInterface
+    class LinearAllocator2 : public OffsetAllocatorInterface
     {
     public:
-        LinearAllocator() = default;
-        LinearAllocator(ByteRange range);
+        LinearAllocator2() = default;
+        LinearAllocator2(ByteRange range);
 
         void* allocate(size_t bytes) override;
         void* allocate(size_t bytes, size_t align) override;

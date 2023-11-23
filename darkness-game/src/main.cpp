@@ -442,10 +442,20 @@ int doWork()
 
 		LARGE_INTEGER prewarm;
 		QueryPerformanceCounter(&prewarm);
-		ecs.prewarmArcheType<EcsTransform, EcsRigidBody, A, B>(5ull * 1024ull * 1024ull * 1024ull);
+		//ecs.prewarmArcheType<EcsTransform, EcsRigidBody, A, B>(5ull * 1024ull * 1024ull * 1024ull);
 		//ecs.prewarmArcheType<EcsTransform, EcsRigidBody, A, B>(1024ull * 1024ull);
 
 		//void* mem = malloc(5ull * 1024ull * 1024ull * 1024ull);
+
+		auto archeType = ecs.archeTypeStorage().archeType({ 
+			ecs.componentTypeStorage().typeId<EcsTransform>(),
+			ecs.componentTypeStorage().typeId<EcsRigidBody>(),
+			ecs.componentTypeStorage().typeId<A>(),
+			ecs.componentTypeStorage().typeId<B>() });
+		auto archeTypeSet = archeType.typeSet();
+		auto archeTypeId = archeType.id();
+
+		ecs.updateArcheTypeStorage(archeType.id());
 
 		LARGE_INTEGER start;
 		QueryPerformanceCounter(&start);
@@ -453,13 +463,14 @@ int doWork()
 		{
 			auto entity = ecs.createEntity();
 
-			//entity.addComponents<EcsTransform>();
+			//entity.addComponent<EcsTransform>();
 			//entity.addComponent<EcsRigidBody>();
-			//entity.addComponents<A>();
+			//entity.addComponent<A>();
 			//entity.addComponent<B>();
 			// 
 			// 
-			entity.addComponents<EcsTransform, EcsRigidBody, A, B > ();
+			//entity.addComponents<EcsTransform, EcsRigidBody, A, B > ();
+			entity.setComponents(archeTypeId);
 			
 			//entity.addComponent<EcsTransform>();
 			
@@ -505,16 +516,7 @@ int doWork()
 		GravityWell gravityWell;
 		ecs.query([&gravityWell, &ecs](EcsTransform& transform, EcsRigidBody& rigidBody)
 			{
-				//EcsTransform& randomEntityTransform = ecs.query<EcsTransform>(ecs::EntityId{ arandomUInt() });
-
-				//transform += randomEntityTransform;
 				rigidBody.simulate(gravityWell, transform, 1000.0f / 60.0f);
-
-				//Vector4f tmp{ 0.1f, 0.1f, 0.1f, 0.1f };
-				//__movsq((PDWORD64)&transform, (PDWORD64)&tmp, 2);
-				//transform.position = Vector4f{ 0.1f, 0.1f, 0.1f, 0.1f };
-				//rigidBody.mass += 0.1f;
-				//rigidBody.velocity += Vector3f{ 0.1f, 0.1f, 0.1f };
 			});
 
 		LARGE_INTEGER simulated;

@@ -4,7 +4,6 @@
 #include "containers/unordered_map.h"
 #include "TypeSort.h"
 #include "EcsShared.h"
-#include "ArcheTypeStorage.h"
 #include "tools/Debug.h"
 
 #include <typeinfo>
@@ -70,6 +69,8 @@ namespace ecs
     class ComponentTypeStorage
     {
     public:
+        ComponentTypeStorage()
+        {};
 
         struct TypeInfo
         {
@@ -90,7 +91,7 @@ namespace ecs
         };
 
         template<typename T>
-        static ComponentTypeId typeId()
+        ComponentTypeId typeId()
         {
             static TypeInfo typeInfo(
                 GlobalComponentTypeId++, 
@@ -100,139 +101,19 @@ namespace ecs
                     auto res = new ComponentData<T>(static_cast<T*>(ptr), elements);
                     return res;
                 },
-                ComponentTypeStorage::instance().m_typeInfoStorage,
+                m_typeInfoStorage,
                 sizeof(T));
             return typeInfo.id;
         }
 
-#ifdef STATIC_ARCHETYPE_IMPL
-        struct ArcheTypeInfo
+        TypeInfo& typeInfo(ComponentTypeId id)
         {
-            ArcheTypeInfo(
-                ComponentArcheTypeId _id,
-                engine::vector<ArcheTypeInfo>& typeInfoStorage)
-                : id{ _id }
-            {
-                typeInfoStorage.emplace_back(*this);
-            }
-            ComponentArcheTypeId id;
-        };
+            return m_typeInfoStorage[id];
+        }
 
     private:
-        template<typename T>
-        static ComponentArcheTypeId archetypeInternalId()
-        {
-            static ComponentArcheTypeId id(GlobalArcheTypeId++);
-            return id;
-        }
-    public:
-        template<typename T>
-        static std::tuple<typename std::remove_reference<T>::type> packCom()
-        {
-            return std::make_tuple<typename std::remove_reference<T>::type>(std::remove_reference<T>::type());
-        }
-
-        template <typename T, typename Arg, typename... Args>
-        static std::tuple<typename std::remove_reference<T>::type, typename std::remove_reference<Arg>::type, Args...> packCom()
-        {
-            return std::tuple_cat(
-                std::make_tuple<typename std::remove_reference<T>::type>(std::remove_reference<T>::type()),
-                packCom<Arg, Args...>());
-        }
-
-        template<typename... Args>
-        static ComponentArcheTypeId archetypeId()
-        {
-            std::any test = packCom<Args...>();//std::tuple<Args...>();
-            LOG("%s", test.type().name());
-            auto id = archetypeInternalId<instantiate_t<SortedTypeContainer, sorted_list_t<list<Args...>>>>();
-            static ArcheTypeInfo archetypeInfo(
-                id,
-                ComponentTypeStorage::instance().m_archeTypeInfoStorage);
-
-            return id;
-        }
-#endif
-
-        static TypeInfo& typeInfo(ComponentTypeId id)
-        {
-            return ComponentTypeStorage::instance().m_typeInfoStorage[id];
-        }
-
-#ifdef STATIC_ARCHETYPE_IMPL
-        static ArcheTypeInfo& archeTypeInfo(ComponentArcheTypeId id)
-        {
-            return ComponentTypeStorage::instance().m_archeTypeInfoStorage[id];
-        }
-#endif
-
-#if 0
-        //ARCHETYPE_HASHED
-        static ComponentArcheTypeId archeTypeId(const engine::vector<ComponentTypeId>& typeIds)
-        {
-            if (typeIds.empty())
-                return {};
-        
-            uint64_t hash = fnv1aHash(*typeIds.begin());
-            for (auto t = typeIds.begin() + 1; t != typeIds.end(); ++t)
-                hash ^= fnv1aHash(*t);
-        
-            auto& storage = ComponentTypeStorage::instance().m_archeTypeStorage;
-            auto existing = storage.find(hash);
-            if (existing != storage.end())
-            {
-                return existing->second.id;
-            }
-            else
-            {
-                auto result = ComponentTypeStorage::instance().m_consistentArchetypeId++;
-                storage[hash] = { hash, result, typeIds };
-                return result;
-            }
-        }
-        
-        static engine::vector<ComponentTypeId> typeIds(ComponentArcheTypeId archeType)
-        {
-            ComponentTypeStorage& storage = ComponentTypeStorage::instance();
-            for (auto&& pair : storage.m_archeTypeStorage)
-            {
-                if (pair.second.id == archeType)
-                    return pair.second.components;
-            }
-            return {};
-        }
-    private:
-        struct ArcheTypeInfo
-        {
-            uint64_t hash;
-            ComponentArcheTypeId id;
-            engine::vector<ComponentTypeId> components;
-        };
-        engine::unordered_map<uint64_t, ArcheTypeInfo> m_archeTypeStorage;
-        ComponentArcheTypeId m_consistentArchetypeId;
-
-#endif
-
-    private:
-        ComponentTypeStorage()
-            //: m_consistentArchetypeId{ 0 }
-        {}
-
-        static ComponentTypeStorage& instance()
-        {
-            static ComponentTypeStorage storage;
-            return storage;
-        }
-
         engine::vector<TypeInfo> m_typeInfoStorage;
 
-#ifdef STATIC_ARCHETYPE_IMPL
-        engine::vector<ArcheTypeInfo> m_archeTypeInfoStorage;
-#endif
     };
 
-#ifdef STATIC_ARCHETYPE_IMPL
-    struct InvalidArcheType{};
-    static auto InvalidArchetypeId = ComponentTypeStorage::archetypeId<InvalidArcheType>();
-#endif
 }

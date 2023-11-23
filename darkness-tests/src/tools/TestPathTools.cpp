@@ -1,12 +1,8 @@
 #include "gtest/gtest.h"
 #include "tools/PathTools.h"
+#include "platform/Environment.h"
 
 using namespace engine;
-
-static engine::string ValidFilePath =              "C:\\work\\darkness\\test-graphics\\data\\test.txt";
-static engine::string ValidFileName =                                                       "test.txt";
-static engine::string ValidFolderPathWithoutTD =   "C:\\work\\darkness\\test-graphics\\data";
-static engine::string ValidFolderPathWithTD =      "C:\\work\\darkness\\test-graphics\\data\\";
 
 TEST(TestPathTools, PathDelimiters)
 {
@@ -16,6 +12,15 @@ TEST(TestPathTools, PathDelimiters)
 
 TEST(TestPathTools, PathExtractFolder)
 {
+    // workingDir = "C:\\work\\darkness\\darkness-tests\\bin\\win64\\debug\\darknesstests.exe"
+    auto workingDir = engine::getExecutableDirectory();
+    workingDir = workingDir.substr(0, workingDir.rfind("\\"));
+    workingDir += "\\..\\..\\..\\data";
+    static engine::string ValidFilePath = workingDir + "\\test.txt";
+    static engine::string ValidFileName = "test.txt";
+    static engine::string ValidFolderPathWithoutTD = workingDir + "";
+    static engine::string ValidFolderPathWithTD = workingDir + "\\";
+
     // this needs to point
     string path1 = ValidFilePath;
     string path1A = ValidFolderPathWithoutTD;

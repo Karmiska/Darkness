@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ecs/ComponentTypeStorage.h"
+#include "ArcheTypeStorage.h"
 #include <cstdint>
 #include <tuple>
 
@@ -39,13 +40,15 @@ namespace ecs
     class Entity
     {
     public:
-        Entity(Ecs* ecs, EntityId _entityId)
+        Entity(Ecs* ecs, ComponentTypeStorage* componentTypeStorage, EntityId _entityId)
             : m_ecs{ ecs }
+            , m_componentTypeStorage{ componentTypeStorage }
             , entityId{ _entityId }
         {}
 
     private:
         Ecs* m_ecs;
+        ComponentTypeStorage* m_componentTypeStorage;
     public:
 
         EntityId entityId;
@@ -58,7 +61,7 @@ namespace ecs
         template<typename T>
         void addComponent()
         {
-            addComponent(ComponentTypeStorage::typeId<typename std::remove_reference<T>::type>());
+            addComponent(m_componentTypeStorage->typeId<typename std::remove_reference<T>::type>());
         }
 
         template<typename... T>
@@ -68,7 +71,7 @@ namespace ecs
         template<typename T, typename... Rest>
         void unpackTypes(ArcheTypeSet& result)
         {
-            result.set(ComponentTypeStorage::typeId<typename std::remove_reference<T>::type>());
+            result.set(m_componentTypeStorage->typeId<typename std::remove_reference<T>::type>());
             unpackTypes<Rest& ...>(result);
         }
 
@@ -80,27 +83,38 @@ namespace ecs
             addComponents(typeIndexes);
         }
 
+        template<typename T, typename... Rest>
+        void setComponents()
+        {
+            ArcheTypeSet typeIndexes;
+            unpackTypes<T, Rest...>(typeIndexes);
+            setComponents(typeIndexes);
+        }
+
         template<typename T>
         bool hasComponent()
         {
-            return hasComponent(ComponentTypeStorage::typeId<typename std::remove_reference<T>::type>());
+            return hasComponent(m_componentTypeStorage->typeId<typename std::remove_reference<T>::type>());
         }
 
         template<typename T>
         void removeComponent()
         {
-            removeComponent(ComponentTypeStorage::typeId<typename std::remove_reference<T>::type>());
+            removeComponent(m_componentTypeStorage->typeId<typename std::remove_reference<T>::type>());
         }
 
         template<typename T>
         T& component()
         {
-            T* ptr = reinterpret_cast<T*>(component(ComponentTypeStorage::typeId<typename std::remove_reference<T>::type>()));
+            T* ptr = reinterpret_cast<T*>(component(m_componentTypeStorage->typeId<typename std::remove_reference<T>::type>()));
             return *(ptr + entityIndexFromEntityId(entityId));
         }
 
         void addComponent(ComponentTypeId componentTypeId);
         void addComponents(const ArcheTypeSet& typeIndexes);
+        void addComponents(const ArcheTypeSet& typeIndexes, ComponentArcheTypeId id);
+        void setComponents(const ArcheTypeSet& typeIndexes);
+        void setComponents(ComponentArcheTypeId id);
         bool hasComponent(ComponentTypeId componentTypeId);
         void removeComponent(ComponentTypeId componentTypeId);
         void* component(ComponentTypeId componentTypeId);

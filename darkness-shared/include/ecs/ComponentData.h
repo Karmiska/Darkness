@@ -3,6 +3,7 @@
 #include "containers/vector.h"
 #include "tools/ToolsCommon.h"
 #include "ComponentTypeStorage.h"
+#include "ArcheTypeStorage.h"
 #include "Entity.h"
 #include <stack>
 #include <mutex>
@@ -23,36 +24,30 @@ namespace ecs
     {
         
     public:
-        Chunk(ComponentArcheTypeId archeType)
+        Chunk(
+            ArcheTypeStorage& archeTypeStorage, 
+            ComponentArcheTypeId archeType)
             : m_used{ 0 }
         {
-            m_componentTypeIds = ArcheTypeStorage::instance().typeSetFromArcheType(archeType);
-            uint32_t combinedTypeBytes = 0;
-            uint32_t typeCount = 0;
-
-            for (auto&& type : m_componentTypeIds)
-            {
-                auto typeInfo = ComponentTypeStorage::typeInfo(type);
-                combinedTypeBytes += typeInfo.typeSizeBytes;
-                ++typeCount;
-            }
-            m_componentData.reserve(typeCount);
-            m_typePaddingSizeBytes = typeCount * ChunkDataAlignment;
+            auto archeTypeInfo = archeTypeStorage.archeTypeInfo(archeType);
+            m_componentTypeIds = archeTypeInfo.set;
+            m_componentData.reserve(archeTypeInfo.typeCount);
+            m_typePaddingSizeBytes = archeTypeInfo.typeCount * ChunkDataAlignment;
             auto chunkSizeForData = PreferredChunkSizeBytes - m_typePaddingSizeBytes;
 
-            m_elements = chunkSizeForData / combinedTypeBytes;
-            m_elementSizeBytes = combinedTypeBytes;
+            m_elements = chunkSizeForData / archeTypeInfo.sizeBytes;
+            m_elementSizeBytes = archeTypeInfo.sizeBytes;
         }
 
         // storageBytes is 64 bytes aligned ptr.
         // it contains enough space for (capacity() * elementSizeBytes()) + typePaddingSizeBytes()
         // typePaddingSizeBytes() = 64 bytes after each component data
-        void initialize(void* storageBytes, size_t bytes)
+        void initialize(ComponentTypeStorage& componentTypeStorage, void* storageBytes, size_t bytes)
         {
             auto ptr = reinterpret_cast<uintptr_t>(storageBytes);
             for (auto&& type : m_componentTypeIds)
             {
-                auto typeInfo = ComponentTypeStorage::typeInfo(type);
+                auto typeInfo = componentTypeStorage.typeInfo(type);
                 auto typeBytes = typeInfo.typeSizeBytes * m_elements;
                 m_componentData.emplace_back(typeInfo.create(reinterpret_cast<void*>(ptr), m_elements));
                 ptr += typeBytes;
@@ -86,7 +81,7 @@ namespace ecs
 
         size_t available() const
         {
-            return capacity() - size();
+            return m_elements - m_used;
         }
 
         bool empty() const
