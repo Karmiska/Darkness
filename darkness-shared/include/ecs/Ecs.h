@@ -27,6 +27,7 @@ namespace ecs
             , m_componentTypeStorage{}
             , m_archeTypeStorage{ m_componentTypeStorage }
             , m_chunkStorage{ m_componentTypeStorage, m_archeTypeStorage }
+            , m_lastArcheTypeId{ InvalidArcheTypeId }
         {
         }
 
@@ -40,6 +41,28 @@ namespace ecs
             return Entity(this, &m_componentTypeStorage, id);
         };
 
+        
+
+        void updateArcheTypeStorage(ComponentArcheTypeId id)
+        {
+            if (id >= m_chunks.size())
+            {
+                m_chunks.resize(id + 1);
+                m_chunkMask.resize(id + 1);
+                //m_lastUsedChunk.resize(id + 1, -1);
+            }
+        }
+
+        template<typename T, typename... Rest>
+        ArcheType archeType()
+        {
+            ArcheTypeSet typeIndexes;
+            unpackTypes<T, Rest...>(typeIndexes);
+            return m_archeTypeStorage.archeType(typeIndexes);
+        }
+
+    private:
+        
         ComponentTypeStorage& componentTypeStorage()
         {
             return m_componentTypeStorage;
@@ -49,17 +72,6 @@ namespace ecs
         {
             return m_archeTypeStorage;
         }
-
-        void updateArcheTypeStorage(ComponentArcheTypeId id)
-        {
-            if (id >= m_chunks.size())
-            {
-                m_chunks.resize(id + 1);
-                //m_lastUsedChunk.resize(id + 1, -1);
-            }
-        }
-
-    private:
 
         template<typename T>
         uint64_t typeIndex()
@@ -240,11 +252,11 @@ namespace ecs
                 oldChunk->free(oldEntityIndex);
 
                 // if the chunk is now empty. remove it.
-                if (oldChunk->empty())
+                if (oldChunk->empty() && m_chunks[oldArcheTypeId].size() > 1)
                 {
                     //if (m_lastUsedChunk[oldArcheTypeId] == oldChunkIndex)
                     //    m_lastUsedChunk[oldArcheTypeId] = -1;
-                    lastArcheTypeId = InvalidArcheTypeId;
+                    m_lastArcheTypeId = InvalidArcheTypeId;
                     m_lastUsedChunk = nullptr;
                     m_chunkStorage.freeChunk(oldArcheTypeId, m_chunks[oldArcheTypeId][oldChunkIndex]);
                     m_chunks[oldArcheTypeId].erase(m_chunks[oldArcheTypeId].begin() + oldChunkIndex);
@@ -266,33 +278,82 @@ namespace ecs
             //        return createEntityId(ch->allocate(), lastUsed, archeTypeId);
             //    }
             //}
-            if(lastArcheTypeId == archeTypeId && m_lastUsedChunk->available())
-                return createEntityId(m_lastUsedChunk->allocate(), m_lastUsedChunkId, archeTypeId);
-
-            // TODO: mark possible candidate chunks
-            //       based on when chunks have had entities removed
-            //       from them
-            // find a chunk with free space
             auto& chunkList = m_chunks[archeTypeId];
-            //for (int i = 0; i < chunkList.size(); ++i)
-            //{
-            //    auto ch = chunkList[i];
-            //    if (ch->available())
-            //    {
-            //        m_lastUsedChunkId = i;
-            //        m_lastUsedChunk = ch;
-            //        lastArcheTypeId = archeTypeId;
-            //        return createEntityId(ch->allocate(), i, archeTypeId);
-            //    }
-            //}
+            auto& chunkMask = m_chunkMask[archeTypeId];
 
+            if (m_lastArcheTypeId == archeTypeId)
+            {
+                //when the archetype changes between every call. this is never called.
+
+
+                if (m_lastUsedChunk->available())
+                    return createEntityId(m_lastUsedChunk->allocate(), m_lastUsedChunkId, archeTypeId);
+                else
+                {
+                    chunkMask.clear(m_lastUsedChunkId);
+                    //LOG("Clearing bit: %i", m_lastUsedChunkId);
+                }
+
+                // find the next free chunk
+                engine::BitSetDynamic::Iterator findChunk(&chunkMask, m_lastUsedChunkId);
+                if (findChunk != chunkMask.end())
+                {
+                    auto emptyChunkId = *findChunk;
+                    m_lastUsedChunkId = emptyChunkId;
+                    //LOG("Setting last used archetype 1: %i chunk Id: %i", archeTypeId, m_lastUsedChunkId);
+                    while (emptyChunkId >= chunkList.size())
+                        chunkList.emplace_back(m_chunkStorage.allocateChunk(archeTypeId));
+                    m_lastUsedChunk = chunkList[emptyChunkId];
+                    m_lastArcheTypeId = archeTypeId;
+                    return createEntityId(m_lastUsedChunk->allocate(), m_lastUsedChunkId, archeTypeId);
+                }
+            }
+
+            // find any chunk that has space
+            auto nonFullChunk = chunkMask.begin();
+            if (nonFullChunk != chunkMask.end())
+            {
+                auto emptyChunkId = *nonFullChunk;
+                m_lastUsedChunkId = emptyChunkId;
+                //LOG("Setting last used archetype 2: %i chunk Id: %i", archeTypeId, emptyChunkId);
+                while (emptyChunkId >= chunkList.size())
+                    chunkList.emplace_back(m_chunkStorage.allocateChunk(archeTypeId));
+                m_lastUsedChunk = chunkList[emptyChunkId];
+                m_lastArcheTypeId = archeTypeId;
+                if (m_lastUsedChunk->available())
+                    return createEntityId(m_lastUsedChunk->allocate(), m_lastUsedChunkId, archeTypeId);
+                else
+                {
+                    chunkMask.clear(m_lastUsedChunkId);
+                    //LOG("Clearing bit: %i", m_lastUsedChunkId);
+                }
+            }
+            
             // or create new chunk if one wasn't available
             chunkList.emplace_back(m_chunkStorage.allocateChunk(archeTypeId));
+            
+            // resize chunk mask
+            auto newChunkCount = chunkList.size();
+            if (newChunkCount > chunkMask.sizeBits())
+            {
+                if (chunkMask.sizeBits() == 0)
+                {
+                    chunkMask.resize(512, true);
+                    //LOG("Resizing archetype %i chunk mask to: %i", archeTypeId, 512);
+                }
+                else
+                {
+                    chunkMask.resize(chunkMask.sizeBits() * 2, true);
+                    //LOG("Resizing archetype %i chunk mask to: %i", archeTypeId, chunkMask.sizeBits());
+                }
+            }
+
             //lastUsed = chunkList.size() - 1;
             m_lastUsedChunkId = chunkList.size() - 1;
+            //LOG("Setting last used archetype 3: %i chunk Id: %i", archeTypeId, m_lastUsedChunkId);
             m_lastUsedChunk = chunkList[m_lastUsedChunkId];
-            lastArcheTypeId = archeTypeId;
-            return createEntityId(chunkList.back()->allocate(), chunkList.size() - 1, archeTypeId);
+            m_lastArcheTypeId = archeTypeId;
+            return createEntityId(m_lastUsedChunk->allocate(), m_lastUsedChunkId, archeTypeId);
         }
 
         bool hasComponent(const Entity& entity, ComponentTypeId componentTypeId)
@@ -388,9 +449,10 @@ namespace ecs
         friend class Entity;
         Entity m_emptyEntity;
         engine::vector<engine::vector<Chunk*>> m_chunks;
+        engine::vector<engine::BitSetDynamic> m_chunkMask;
         //engine::vector<int> m_lastUsedChunk;
 
-        ComponentArcheTypeId lastArcheTypeId;
+        ComponentArcheTypeId m_lastArcheTypeId;
         Chunk* m_lastUsedChunk;
         int m_lastUsedChunkId;
 

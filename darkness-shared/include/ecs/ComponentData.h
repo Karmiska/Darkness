@@ -114,7 +114,9 @@ namespace ecs
             ASSERT(false, "");
             return 0;
 #else
-            return m_used++;
+            auto res = m_used++;
+            ASSERT(res < m_elements+1, "wut?");
+            return res;
 #endif
         }
 

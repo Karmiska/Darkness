@@ -34,27 +34,27 @@ namespace engine
         {}
 
         BitSetDynamic(size_t bitSize)
-            : m_data{ static_cast<uint64_t*>(_aligned_malloc(roundUpToMultiple(bitSize, 64), 64)) }
+            : m_data{ static_cast<uint64_t*>(_aligned_malloc(roundUpToMultiple(bitSize, 64) / 8, 64)) }
             , m_dataCount{ roundUpToMultiple(bitSize, 64) / 64 }
             , m_size{ bitSize }
         {
-            memset(m_data, 0, sizeof(uint64_t) * m_dataCount);
+            memset(m_data, 0, m_dataCount * sizeof(uint64_t));
         }
 
         BitSetDynamic(const BitSetDynamic& bitset)
         {
-            m_data = static_cast<uint64_t*>(_aligned_malloc(roundUpToMultiple(bitset.m_size, 64), 64));
+            m_data = static_cast<uint64_t*>(_aligned_malloc(roundUpToMultiple(bitset.m_size, 64) / 8, 64));
             m_dataCount = bitset.m_dataCount;
             m_size = bitset.m_size;
-            memcpy(m_data, bitset.m_data, m_dataCount * 64);
+            memcpy(m_data, bitset.m_data, m_dataCount * sizeof(uint64_t));
         }
 
         BitSetDynamic& operator=(const BitSetDynamic& bitset)
         {
-            m_data = static_cast<uint64_t*>(_aligned_malloc(roundUpToMultiple(bitset.m_size, 64), 64));
+            m_data = static_cast<uint64_t*>(_aligned_malloc(roundUpToMultiple(bitset.m_size, 64) / 8, 64));
             m_dataCount = bitset.m_dataCount;
             m_size = bitset.m_size;
-            memcpy(m_data, bitset.m_data, m_dataCount * 64);
+            memcpy(m_data, bitset.m_data, m_dataCount * sizeof(uint64_t));
             return *this;
         }
 
@@ -101,6 +101,31 @@ namespace engine
         {
             ASSERT(index >= 0 && index < m_size, "Setting bit: %i to BitSet<%i> is invalid. Correct index range: 0 .. %i", m_size, index, m_size - 1);
             return m_data[index / 64] & ((uint64_t)1u << ((uint64_t)index - (((uint64_t)index / (uint64_t)64ull) * (uint64_t)64ull)));
+        }
+
+        void resize(size_t sizeBits, bool fillAsSet = false)
+        {
+            auto newAllocationSizeBytes = roundUpToMultiple(sizeBits, 64) / 8;
+            auto data = static_cast<uint64_t*>(_aligned_malloc(newAllocationSizeBytes, 64));
+
+            auto oldAllocationSizeBytes = roundUpToMultiple(m_size, 64) / 8;
+            auto copyBytes = std::min(newAllocationSizeBytes, oldAllocationSizeBytes);
+            if (copyBytes)
+            {
+                memcpy(data, m_data, copyBytes);
+                _aligned_free(m_data);
+            }
+
+            m_data = data;
+            m_size = sizeBits;
+            m_dataCount = roundUpToMultiple(m_size, 64) / 64;
+            if (copyBytes < newAllocationSizeBytes)
+                memset(reinterpret_cast<uint8_t*>(m_data) + copyBytes, fillAsSet ? 0xff : 0, newAllocationSizeBytes - copyBytes);
+        }
+
+        size_t sizeBits() const
+        {
+            return m_size;
         }
 
         bool operator==(const BitSetDynamic& set) const
@@ -176,12 +201,15 @@ namespace engine
         {
             Iterator(const BitSetDynamic* set, uint64_t index)
                 : m_set{ set }
-                , m_block{ 0u }
+                , m_block{ index / 64 }
                 , m_index{ index }
-                , m_indexInternal{ static_cast<unsigned long>(index) }
+                , m_indexInternal{ static_cast<unsigned long>(index - (m_block * 64)) }
             {
-                if (index == m_set->m_size+1)
+                if (index >= m_set->m_size)
+                {
+                    m_index = m_set->m_size;
                     return;
+                }
                 this->operator++();
             }
 
@@ -202,7 +230,7 @@ namespace engine
                     }
                     ++m_block;
                 }
-                m_index = m_set->m_size+1;
+                m_index = m_set->m_size;
                 return *this;
             }
             Iterator operator++(int) { Iterator tmp = *this; ++(*this); return tmp; }
@@ -223,7 +251,7 @@ namespace engine
         }
         Iterator end() const
         {
-            return Iterator(this, m_size+1);
+            return Iterator(this, m_size);
         }
     private:
         uint64_t* m_data;
@@ -265,6 +293,11 @@ namespace engine
         {
             ASSERT(index >= 0 && index < N, "Setting bit: %i to BitSet<%i> is invalid. Correct index range: 0 .. %i", N, index, N - 1);
             return m_data[index / 64] & ((uint64_t)1u << ((uint64_t)index - (((uint64_t)index / (uint64_t)64ull) * (uint64_t)64ull)));
+        }
+
+        size_t sizeBits() const
+        {
+            return N;
         }
 
         bool operator==(const BitSet& set) const
@@ -425,6 +458,11 @@ namespace engine
             return m_data & ((uint8_t)1u << (uint8_t)index);
         }
 
+        size_t sizeBits() const
+        {
+            return 8;
+        }
+
         bool operator==(const BitSet& set) const
         {
             return m_data == set.m_data;
@@ -559,6 +597,11 @@ namespace engine
         {
             ASSERT(index >= 0 && index < 16, "Setting bit: %i to BitSet<16> is invalid. Correct index range: 0 .. 15", index);
             return m_data & ((uint16_t)1u << (uint16_t)index);
+        }
+
+        size_t sizeBits() const
+        {
+            return 16;
         }
 
         bool operator==(const BitSet& set) const
@@ -697,6 +740,11 @@ namespace engine
             return m_data & ((uint32_t)1u << (uint32_t)index);
         }
 
+        size_t sizeBits() const
+        {
+            return 32;
+        }
+
         bool operator==(const BitSet& set) const
         {
             return m_data == set.m_data;
@@ -831,6 +879,11 @@ namespace engine
         {
             ASSERT(index >= 0 && index < 64, "Setting bit: %i to BitSet<64> is invalid. Correct index range: 0 .. 63", index);
             return m_data & ((uint64_t)1u << (uint64_t)index);
+        }
+
+        size_t sizeBits() const
+        {
+            return 64;
         }
 
         bool operator==(const BitSet& set) const
@@ -989,6 +1042,11 @@ namespace engine
                 m_data[0] & ((uint64_t)1u << (uint64_t)(index-64));
         }
 
+        size_t sizeBits() const
+        {
+            return 128;
+        }
+
         bool operator==(const BitSet& set) const
         {
             return m_data[0] == set.m_data[0] &&
@@ -1055,6 +1113,15 @@ namespace engine
                 , m_index{ index }
                 , m_indexInternal{ static_cast<unsigned long>(index) }
             {
+                // NOTE: 
+                // m_indexInternal is not set to: m_index - (m_index / 64)
+                // m_block is not set to m_index / 64
+                // this is intentional. the most common use case is iterating from the start and that would be
+                // useless math for that case.
+                // in case of index being higher than 63, we do one additional _BitScanForward64 loop as a result.
+                // ie. if index is greater than 63, mask64(index) will produce an empty mask and we increment the block.
+
+
                 if (index == EndIteratorValue)
                     return;
                 this->operator++();

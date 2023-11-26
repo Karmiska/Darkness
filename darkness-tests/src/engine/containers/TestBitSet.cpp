@@ -15,6 +15,15 @@ TEST(TestBitSetDynamic, BitSetDynamicIterator)
         EXPECT_EQ(i, 0);
     }
 
+    // check that size 0 bitset works
+    {
+        BitSetDynamic test;
+        int i = 0;
+        for (auto&& bit : test)
+            ++i;
+        EXPECT_EQ(i, 0);
+    }
+
     // check that full bitset works
     {
         BitSetDynamic test(8);
@@ -122,6 +131,39 @@ TEST(TestBitSetDynamic, BitSetDynamicIterator)
         EXPECT_EQ(bits.size(), 768);
         for (int i = 0; i < 768; ++i)
             EXPECT_EQ(bits[i], i);
+    }
+
+    {
+        // test iterator starting position and resize
+        BitSetDynamic test(65536);
+        test.set(12345);
+        test.set(23456);
+        test.set(34567);
+        test.set(45678);
+        test.set(56789);
+        {
+            engine::vector<uint64_t> vals;
+            auto iterator = BitSetDynamic::Iterator(&test, 34000);
+            for (; iterator != test.end(); ++iterator)
+                vals.emplace_back(*iterator);
+
+            EXPECT_EQ(vals.size(), 3);
+            EXPECT_EQ(vals[0], 34567);
+            EXPECT_EQ(vals[1], 45678);
+            EXPECT_EQ(vals[2], 56789);
+        }
+        {
+            test.resize(100000);
+            engine::vector<uint64_t> vals;
+            auto iterator = BitSetDynamic::Iterator(&test, 34000);
+            for (; iterator != test.end(); ++iterator)
+                vals.emplace_back(*iterator);
+
+            EXPECT_EQ(vals.size(), 3);
+            EXPECT_EQ(vals[0], 34567);
+            EXPECT_EQ(vals[1], 45678);
+            EXPECT_EQ(vals[2], 56789);
+        }
     }
 
     // test some edge cases
@@ -427,6 +469,24 @@ TEST(TestBitSet, BitSetIterator128BitSpecialization)
             EXPECT_EQ(bits[i], i);
     }
 
+    // test iterator starting position
+    {
+        BitSet<128> test;
+        test.set(20);
+        test.set(30);
+        test.set(80);
+        test.set(90);
+
+        engine::vector<int> vals;
+        auto iterator = BitSet<128>::Iterator(&test, 70);
+        for (; iterator != test.end(); ++iterator)
+            vals.emplace_back(*iterator);
+
+        EXPECT_EQ(vals.size(), 2);
+        EXPECT_EQ(vals[0], 80);
+        EXPECT_EQ(vals[1], 90);
+    }
+
     // test some edge cases
     {
         BitSet<128> test;
@@ -459,6 +519,15 @@ TEST(TestBitSet, BitSetIterator512Bits)
     // check that empty bitset works
     {
         BitSet<512> test;
+        int i = 0;
+        for (auto&& bit : test)
+            ++i;
+        EXPECT_EQ(i, 0);
+    }
+
+    // check that size 0 bitset works
+    {
+        BitSet<0> test;
         int i = 0;
         for (auto&& bit : test)
             ++i;
