@@ -11,4 +11,6 @@ namespace ecs
     const ComponentTypeId InvalidTypeId = std::numeric_limits<uint64_t>::max();
     const ComponentArcheTypeId InvalidArcheTypeId = 0xffffff;
     static ComponentTypeId GlobalComponentTypeId = 0;
+
+    #define MaximumArcheTypes 1024
 }

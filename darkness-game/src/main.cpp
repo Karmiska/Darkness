@@ -191,23 +191,31 @@ public:
 	float mass;
 };
 
+#undef INITIALIZE_COMPONENTS
+
 class EcsTransform
 {
 public:
-	EcsTransform() = default;
-	//EcsTransform()
-	//	//: position{ 0.0f, 0.0f, 0.0f, 1.0f }
-	//	: position{ arandomFloat(), arandomFloat(), arandomFloat(), 1.0f }
-	//{}
+#ifdef INITIALIZE_COMPONENTS
+	//EcsTransform() = default;
+	Vector4f position = { 1.0f, 1.0f, 1.0f, 1.0f };
+#else
+	Vector4f position;
+#endif
 
-	EcsTransform(const Vector4f& _position)
-		: position{ _position }
-	{}
+	////EcsTransform()
+	////	: position{ 1.0f, 1.0f, 1.0f, 1.0f }
+	////	//: position{ arandomFloat(), arandomFloat(), arandomFloat(), 1.0f }
+	////{}
+	//
+	//EcsTransform(const Vector4f& _position)
+	//	: position{ _position }
+	//{}
 
 	EcsTransform operator+(const EcsTransform& tr)
 	{
 		auto newPos = position + tr.position;
-		return EcsTransform{newPos};
+		return EcsTransform{ newPos };
 	}
 
 	EcsTransform& operator+=(const EcsTransform& tr)
@@ -215,21 +223,25 @@ public:
 		position += tr.position;
 		return *this;
 	}
-
-	Vector4f position;
 };
 
 class EcsRigidBody
 {
 public:
+#ifdef INITIALIZE_COMPONENTS
+	EcsRigidBody() = default;
+	Vector3f initialvelocity = { 1.0f, 1.0f, 1.0f };
+	Vector3f velocity = { 1.0f, 1.0f, 1.0f };
+	float mass = 1.0f;
+#else
 	Vector3f initialvelocity;
 	Vector3f velocity;
 	float mass;
+#endif
 
-	//EcsRigidBody() = default;
 	//EcsRigidBody()
-	//	//: initialvelocity{ 0.0f, 0.0f, 0.0f }
-	//	: initialvelocity{ arandomFloat() / 300.0f, arandomFloat() / 300.0f, arandomFloat() / 300.0f }
+	//	: initialvelocity{ 1.0f, 1.0f, 1.0f }
+	//	//: initialvelocity{ arandomFloat() / 300.0f, arandomFloat() / 300.0f, arandomFloat() / 300.0f }
 	//	, mass{ 1.0f }
 	//	, velocity{ initialvelocity }
 	//{}
@@ -251,13 +263,13 @@ public:
 struct A
 {
 	bool operator == (const A& other) const = default;
-	int32_t value = 0;
+	int32_t value;
 };
 
 struct B
 {
 	bool operator == (const B& other) const = default;
-	int32_t value = 0;
+	int32_t value;
 };
 
 #endif
@@ -447,9 +459,8 @@ int doWork()
 
 		//void* mem = malloc(5ull * 1024ull * 1024ull * 1024ull);
 
-		//auto archeType = ecs.archeType<EcsTransform, EcsRigidBody, A, B>();
-		//auto archeTypeId = archeType.id();
-		//ecs.updateArcheTypeStorage(archeTypeId);
+		auto archeType = ecs.archeType<EcsTransform, EcsRigidBody, A, B>();
+		auto archeTypeId = archeType.id();
 
 		LARGE_INTEGER start;
 		QueryPerformanceCounter(&start);
@@ -457,15 +468,34 @@ int doWork()
 		{
 			auto entity = ecs.createEntity();
 
-			//entity.addComponent<EcsTransform>();
-			//entity.addComponent<EcsRigidBody>();
-			//entity.addComponent<A>();
-			//entity.addComponent<B>();
-			 
-			 
-			entity.addComponents<EcsTransform, EcsRigidBody, A, B > ();
-			//entity.setComponents(archeTypeId);
-			
+			// Tests for adding components
+			{
+				// Testing with : 100000000 entities
+				// Prewarming took : 0.006400 ms
+				// Populating took : 8190.050781 ms
+				// Simulating took : 231.421707 ms
+				// Combined : 8421.479492 ms
+				//entity.addComponent<EcsTransform>();
+				//entity.addComponent<EcsRigidBody>();
+				//entity.addComponent<A>();
+				//entity.addComponent<B>();
+
+				// Testing with: 100000000 entities
+				// Prewarming took : 0.006100 ms
+				// Populating took : 1290.787231 ms
+				// Simulating took : 231.738098 ms
+				// Combined : 1522.531372 ms
+				//entity.addComponents<EcsTransform, EcsRigidBody, A, B > ();
+
+				// Testing with : 100000000 entities
+				// Prewarming took : 0.004700 ms
+				// Populating took : 395.063690 ms
+				// Simulating took : 232.233505 ms
+				// Combined : 627.301880 ms
+				entity.setComponents(archeTypeId);
+			}
+
+
 			//entity.addComponent<EcsTransform>();
 			
 			//

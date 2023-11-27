@@ -6,6 +6,7 @@
 #include "ecs/Entity.h"
 #include "tools/ToolsCommon.h"
 #include "ecs/TypeSort.h"
+#include "ecs/EcsShared.h"
 
 #include <functional>
 #include <execution>
@@ -16,10 +17,6 @@
 
 namespace ecs
 {
-    #define VectorizationSize 64
-
-    class Entity;
-
     class Ecs
     {
     public:
@@ -31,6 +28,7 @@ namespace ecs
             , m_lastArcheTypeId{ InvalidArcheTypeId }
             , m_archeTypeCount{ 0 }
         {
+            updateArcheTypeStorage(MaximumArcheTypes);
         }
 
         Entity createEntity()
@@ -43,23 +41,6 @@ namespace ecs
             return Entity(this, &m_componentTypeStorage, id);
         };
 
-        
-
-        void updateArcheTypeStorage(ComponentArcheTypeId id)
-        {
-            if (id >= m_archeTypeCount)
-            {
-                auto newSize = id + 1;
-                m_chunks.resize(newSize);
-#ifdef LOOK_FOR_PARTIAL_CHUNKS
-                m_chunkMask.resize(newSize);
-#endif
-                m_lastUsedChunkPerArcheType.resize(newSize);
-                m_partiallyFullChunkIds.resize(newSize);
-                m_archeTypeCount = newSize;
-            }
-        }
-
         template<typename T, typename... Rest>
         ArcheType archeType()
         {
@@ -70,6 +51,23 @@ namespace ecs
 
     private:
         using ChunkId = int;
+
+        void updateArcheTypeStorage(ComponentArcheTypeId id, size_t reserveSpace = 0)
+        {
+            if (id >= m_archeTypeCount)
+            {
+                auto newSize = id + 1;
+                m_chunks.resize(newSize);
+                if (reserveSpace)
+                    m_chunks[newSize - 1].reserve(reserveSpace);
+#ifdef LOOK_FOR_PARTIAL_CHUNKS
+                m_chunkMask.resize(newSize);
+#endif
+                m_lastUsedChunkPerArcheType.resize(newSize);
+                m_partiallyFullChunkIds.resize(newSize);
+                m_archeTypeCount = newSize;
+            }
+        }
 
         ComponentTypeStorage& componentTypeStorage()
         {
@@ -154,7 +152,6 @@ namespace ecs
                     {
                         auto tuples = packComponentPointers<Args...>(*chunk);
 
-
                         for (auto&& entity : *chunk)
                         {
                             callQueryLambda(func, tuples, entity);
@@ -232,9 +229,6 @@ namespace ecs
             auto oldEntityIndex = entityIndexFromEntityId(entity.entityId);
             auto oldChunkIndex = chunkIndexFromEntityId(entity.entityId);
 
-            // make sure we have space for that archetype
-            updateArcheTypeStorage(newArcheTypeId);
-
             // allocate new entity
             entity.entityId = allocateNewEntity(newArcheTypeId);
             auto newEntityIndex = entityIndexFromEntityId(entity.entityId);
@@ -303,8 +297,6 @@ namespace ecs
                 }
             }
         }
-
-        
 
         EntityId allocateNewEntity(ComponentArcheTypeId archeTypeId)
         {
@@ -481,6 +473,8 @@ namespace ecs
             unpackTypes<Rest& ...>(result);
         }
 
+        // Chunk storage can be "preheated" to have chunks of certain archetype ready
+        // so we can do memory allocation beforehand.
         template<typename T, typename... Rest>
         void prewarmArcheType(size_t bytes)
         {

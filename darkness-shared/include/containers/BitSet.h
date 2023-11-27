@@ -192,12 +192,7 @@ namespace engine
         }
 
     public:
-        struct Iterator : public std::iterator<
-            std::forward_iterator_tag,  // iterator_category
-            uint64_t,                   // value_type
-            uint64_t,                   // difference_type
-            const uint64_t*,            // pointer
-            uint64_t>                    // reference
+        struct Iterator
         {
             Iterator(const BitSetDynamic* set, uint64_t index)
                 : m_set{ set }
@@ -213,8 +208,8 @@ namespace engine
                 this->operator++();
             }
 
-            reference operator*() const { return m_index; }
-            pointer operator->() { return &m_index; }
+            uint64_t operator*() const { return m_index; }
+            const uint64_t* operator->() const { return &m_index; }
             Iterator& operator++()
             {
                 while (m_block < m_set->m_dataCount)
@@ -364,12 +359,7 @@ namespace engine
         }
 
     public:
-        struct Iterator : public std::iterator<
-            std::forward_iterator_tag,  // iterator_category
-            uint64_t,                   // value_type
-            uint64_t,                   // difference_type
-            const uint64_t*,            // pointer
-            uint64_t>                    // reference
+        struct Iterator
         {
             Iterator(const BitSet* set, uint64_t index)
                 : m_set{ set }
@@ -382,8 +372,8 @@ namespace engine
                 this->operator++();
             }
 
-            reference operator*() const { return m_index; }
-            pointer operator->() { return &m_index; }
+            uint64_t operator*() const { return m_index; }
+            const uint64_t* operator->() const { return &m_index; }
             Iterator& operator++()
             {
                 while (m_block < BitSetDataCount)
@@ -509,12 +499,7 @@ namespace engine
         }
 
     public:
-        struct Iterator : public std::iterator<
-            std::forward_iterator_tag,  // iterator_category
-            uint8_t,                   // value_type
-            uint8_t,                   // difference_type
-            const unsigned long*,            // pointer
-            uint8_t>                    // reference
+        struct Iterator
         {
             Iterator(const uint8_t* data, uint8_t index)
                 : m_data{ data }
@@ -532,8 +517,8 @@ namespace engine
                     m_index = EndIteratorValue;
             }
 
-            reference operator*() const { return (uint8_t)m_index; }
-            pointer operator->() { return &m_index; }
+            uint8_t operator*() const { return (uint8_t)m_index; }
+            const unsigned long* operator->() const { return &m_index; }
             Iterator& operator++()
             {
                 unsigned long long m = *m_data & mask8(m_indexMask);
@@ -650,12 +635,7 @@ namespace engine
         }
 
     public:
-        struct Iterator : public std::iterator<
-            std::forward_iterator_tag,  // iterator_category
-            uint16_t,                   // value_type
-            uint16_t,                   // difference_type
-            const unsigned long*,            // pointer
-            uint16_t>                    // reference
+        struct Iterator
         {
             Iterator(const uint16_t* data, uint16_t index)
                 : m_data{ data }
@@ -673,8 +653,8 @@ namespace engine
                     m_index = EndIteratorValue;
             }
 
-            reference operator*() const { return (uint16_t)m_index; }
-            pointer operator->() { return &m_index; }
+            uint16_t operator*() const { return m_index; }
+            const unsigned long* operator->() const { return &m_index; }
             Iterator& operator++()
             {
                 unsigned long long m = *m_data & mask16(m_indexMask);
@@ -791,12 +771,7 @@ namespace engine
         }
 
     public:
-        struct Iterator : public std::iterator<
-            std::forward_iterator_tag,  // iterator_category
-            uint32_t,                   // value_type
-            uint32_t,                   // difference_type
-            const unsigned long*,            // pointer
-            uint32_t>                    // reference
+        struct Iterator
         {
             Iterator(const uint32_t* data, uint32_t index)
                 : m_data{ data }
@@ -814,8 +789,8 @@ namespace engine
                     m_index = EndIteratorValue;
             }
 
-            reference operator*() const { return (uint32_t)m_index; }
-            pointer operator->() { return &m_index; }
+            uint32_t operator*() const { return (uint32_t)m_index; }
+            const unsigned long* operator->() const { return &m_index; }
             Iterator& operator++()
             {
                 unsigned long long m = *m_data & mask32(m_indexMask);
@@ -932,12 +907,7 @@ namespace engine
         }
 
     public:
-        struct Iterator : public std::iterator<
-            std::forward_iterator_tag,  // iterator_category
-            uint64_t,                   // value_type
-            uint64_t,                   // difference_type
-            const unsigned long*,            // pointer
-            uint64_t>                    // reference
+        struct Iterator
         {
             Iterator(const uint64_t* data, uint64_t index)
                 : m_data{ data }
@@ -955,11 +925,11 @@ namespace engine
                     m_index = EndIteratorValue;
             }
 
-            reference operator*() const
+            uint64_t operator*() const
             {
                 return (uint64_t)m_index;
             }
-            pointer operator->()
+            const unsigned long* operator->() const
             {
                 return &m_index;
             }
@@ -1100,12 +1070,7 @@ namespace engine
         }
 
     public:
-        struct Iterator : public std::iterator<
-            std::forward_iterator_tag,  // iterator_category
-            uint64_t,                   // value_type
-            uint64_t,                   // difference_type
-            const uint64_t*,            // pointer
-            uint64_t>                    // reference
+        struct Iterator
         {
             Iterator(const BitSet* set, uint64_t index)
                 : m_set{ set }
@@ -1127,8 +1092,8 @@ namespace engine
                 this->operator++();
             }
 
-            reference operator*() const { return m_index; }
-            pointer operator->() { return &m_index; }
+            uint64_t operator*() const { return m_index; }
+            const uint64_t* operator->() const { return &m_index; }
             Iterator& operator++()
             {
                 while (m_block < 2)

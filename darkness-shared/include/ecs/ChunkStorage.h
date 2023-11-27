@@ -111,7 +111,9 @@ namespace ecs
             , m_storageAllocation{ nullptr }
             , m_inUse{ 0 }
         {
-            m_storageAllocation = _aligned_malloc(6ull * 1024ull * 1024ull * 1024ull, ChunkDataAlignment);
+            uint64_t sizeBytes = 6ull * 1024ull * 1024ull * 1024ull;
+            m_storageAllocation = _aligned_malloc(sizeBytes, ChunkDataAlignment);
+            memset(m_storageAllocation, 0, sizeBytes);
         }
 
         ~ChunkStorage()

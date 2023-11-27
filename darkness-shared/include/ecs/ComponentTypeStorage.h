@@ -37,8 +37,9 @@ namespace ecs
 
         ~ComponentData()
         {
-            for (size_t i = 0; i < m_size; ++i)
-                m_data[i].~T();
+            if (!(std::is_standard_layout<T>().value && std::is_trivial<T>().value))
+                for (size_t i = 0; i < m_size; ++i)
+                    m_data[i].~T();
         }
 
         T* data() { return m_data; }
@@ -97,7 +98,8 @@ namespace ecs
                 GlobalComponentTypeId++, 
                 [](void* ptr, size_t elements)->ComponentDataBase*
                 {
-                    auto comdataptr = new (ptr) T[elements];
+                    if(!(std::is_standard_layout<T>().value && std::is_trivial<T>().value))
+                        auto comdataptr = new (ptr) T[elements];
                     auto res = new ComponentData<T>(static_cast<T*>(ptr), elements);
                     return res;
                 },
@@ -106,7 +108,7 @@ namespace ecs
             return typeInfo.id;
         }
 
-        TypeInfo& typeInfo(ComponentTypeId id)
+        const TypeInfo& typeInfo(ComponentTypeId id) const
         {
             return m_typeInfoStorage[id];
         }

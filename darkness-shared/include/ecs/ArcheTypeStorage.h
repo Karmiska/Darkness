@@ -18,7 +18,7 @@
 
 namespace ecs
 {
-    using ArcheTypeSet = engine::BitSet<128>;
+    using ArcheTypeSet = engine::BitSet<MaximumArcheTypes>;
 
     class ArcheType
     {
