@@ -82,7 +82,8 @@ namespace engine
             auto currentValue = m_fence->GetCompletedValue();
             while (currentValue < m_fenceValue)
             {
-                ASSERT(SUCCEEDED(m_fence->SetEventOnCompletion(m_fenceValue, m_fenceEvent)));
+                auto res = m_fence->SetEventOnCompletion(m_fenceValue, m_fenceEvent);
+                ASSERT(SUCCEEDED(res));
                 WaitForSingleObject(m_fenceEvent, INFINITE);
                 currentValue = m_fence->GetCompletedValue();
             }
@@ -93,7 +94,8 @@ namespace engine
             auto currentValue = m_fence->GetCompletedValue();
             while (currentValue < value)
             {
-                ASSERT(SUCCEEDED(m_fence->SetEventOnCompletion(value, m_fenceEvent)));
+                auto res = m_fence->SetEventOnCompletion(value, m_fenceEvent);
+                ASSERT(SUCCEEDED(res));
                 WaitForSingleObject(m_fenceEvent, INFINITE);
                 currentValue = m_fence->GetCompletedValue();
             }

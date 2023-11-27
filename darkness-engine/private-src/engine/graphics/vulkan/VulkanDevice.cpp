@@ -42,7 +42,8 @@ namespace engine
                 reinterpret_cast<void*>(vkGetInstanceProcAddr(instance, "vkCreateWin32SurfaceKHR")));
 
             ASSERT(createWin32SurfaceKHR != nullptr);
-            ASSERT(createWin32SurfaceKHR(instance, &createInfo, nullptr, surface) == VK_SUCCESS);
+            auto res = createWin32SurfaceKHR(instance, &createInfo, nullptr, surface) == VK_SUCCESS;
+            ASSERT(res);
         }
 
         //VulkanInstance DeviceImplVulkan::m_instance;

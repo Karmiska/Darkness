@@ -447,9 +447,9 @@ int doWork()
 
 		//void* mem = malloc(5ull * 1024ull * 1024ull * 1024ull);
 
-		auto archeType = ecs.archeType<EcsTransform, EcsRigidBody, A, B>();
-		auto archeTypeId = archeType.id();
-		ecs.updateArcheTypeStorage(archeTypeId);
+		//auto archeType = ecs.archeType<EcsTransform, EcsRigidBody, A, B>();
+		//auto archeTypeId = archeType.id();
+		//ecs.updateArcheTypeStorage(archeTypeId);
 
 		LARGE_INTEGER start;
 		QueryPerformanceCounter(&start);
@@ -457,13 +457,13 @@ int doWork()
 		{
 			auto entity = ecs.createEntity();
 
-			entity.addComponent<EcsTransform>();
-			entity.addComponent<EcsRigidBody>();
-			entity.addComponent<A>();
-			entity.addComponent<B>();
+			//entity.addComponent<EcsTransform>();
+			//entity.addComponent<EcsRigidBody>();
+			//entity.addComponent<A>();
+			//entity.addComponent<B>();
 			 
 			 
-			//entity.addComponents<EcsTransform, EcsRigidBody, A, B > ();
+			entity.addComponents<EcsTransform, EcsRigidBody, A, B > ();
 			//entity.setComponents(archeTypeId);
 			
 			//entity.addComponent<EcsTransform>();

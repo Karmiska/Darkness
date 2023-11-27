@@ -81,7 +81,7 @@ namespace ecs
 #else
             uintptr_t current = m_inUse.load(std::memory_order_relaxed);
             uintptr_t alignedPtr = roundUpToMultiple(current, ChunkDataAlignment);
-            uintptr_t next = (alignedPtr - current) + bytes;
+            uintptr_t next = alignedPtr + bytes;
 
             while (!std::atomic_compare_exchange_weak_explicit(
                 &m_inUse, &current, next,
@@ -89,7 +89,7 @@ namespace ecs
             {
                 current = m_inUse.load(std::memory_order_relaxed);
                 alignedPtr = roundUpToMultiple(current, ChunkDataAlignment);
-                next = (alignedPtr - current) + bytes;
+                next = alignedPtr + bytes;
             };
 #endif
             return static_cast<uint8_t*>(m_storageAllocation) + alignedPtr;

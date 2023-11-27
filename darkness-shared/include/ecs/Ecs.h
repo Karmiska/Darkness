@@ -12,6 +12,7 @@
 #include <type_traits>
 
 #define PARALLEL_FOR_LOOP
+#undef LOOK_FOR_PARTIAL_CHUNKS
 
 namespace ecs
 {
@@ -28,6 +29,7 @@ namespace ecs
             , m_archeTypeStorage{ m_componentTypeStorage }
             , m_chunkStorage{ m_componentTypeStorage, m_archeTypeStorage }
             , m_lastArcheTypeId{ InvalidArcheTypeId }
+            , m_archeTypeCount{ 0 }
         {
         }
 
@@ -45,11 +47,16 @@ namespace ecs
 
         void updateArcheTypeStorage(ComponentArcheTypeId id)
         {
-            if (id >= m_chunks.size())
+            if (id >= m_archeTypeCount)
             {
-                m_chunks.resize(id + 1);
-                m_chunkMask.resize(id + 1);
-                //m_lastUsedChunk.resize(id + 1, -1);
+                auto newSize = id + 1;
+                m_chunks.resize(newSize);
+#ifdef LOOK_FOR_PARTIAL_CHUNKS
+                m_chunkMask.resize(newSize);
+#endif
+                m_lastUsedChunkPerArcheType.resize(newSize);
+                m_partiallyFullChunkIds.resize(newSize);
+                m_archeTypeCount = newSize;
             }
         }
 
@@ -62,7 +69,8 @@ namespace ecs
         }
 
     private:
-        
+        using ChunkId = int;
+
         ComponentTypeStorage& componentTypeStorage()
         {
             return m_componentTypeStorage;
@@ -251,15 +259,47 @@ namespace ecs
                 // remove the entity from it's old chunk
                 oldChunk->free(oldEntityIndex);
 
-                // if the chunk is now empty. remove it.
+                // if the chunk is now empty. remove it. (keeping at least one chunk ready even if it's empty)
                 if (oldChunk->empty() && m_chunks[oldArcheTypeId].size() > 1)
                 {
-                    //if (m_lastUsedChunk[oldArcheTypeId] == oldChunkIndex)
-                    //    m_lastUsedChunk[oldArcheTypeId] = -1;
-                    m_lastArcheTypeId = InvalidArcheTypeId;
-                    m_lastUsedChunk = nullptr;
+                    auto& lastUsedPerArcheType = m_lastUsedChunkPerArcheType[oldArcheTypeId];
+                    if (lastUsedPerArcheType.id == oldChunkIndex)
+                    {
+                        lastUsedPerArcheType.id = -1;
+                        lastUsedPerArcheType.chunk = nullptr;
+                    }
+                    if (m_lastArcheTypeId == oldArcheTypeId)
+                    {
+                        m_lastArcheTypeId = InvalidArcheTypeId;
+                        m_lastUsedChunk.id = -1;
+                        m_lastUsedChunk.chunk = nullptr;
+                    }
+
+                    for (auto partial = m_partiallyFullChunkIds[oldArcheTypeId].begin();
+                        partial != m_partiallyFullChunkIds[oldArcheTypeId].end(); ++partial)
+                    {
+                        if (partial->id == oldChunkIndex)
+                            partial = m_partiallyFullChunkIds[oldArcheTypeId].erase(partial);
+                        else if (partial->id > oldChunkIndex)
+                            ++partial->id;
+                    }
+
                     m_chunkStorage.freeChunk(oldArcheTypeId, m_chunks[oldArcheTypeId][oldChunkIndex]);
                     m_chunks[oldArcheTypeId].erase(m_chunks[oldArcheTypeId].begin() + oldChunkIndex);
+                }
+                else if (!oldChunk->full())
+                {
+                    bool found = false;
+                    for (auto&& lastUsed : m_partiallyFullChunkIds[oldArcheTypeId])
+                    {
+                        if (lastUsed.chunk == oldChunk)
+                        {
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found)
+                        m_partiallyFullChunkIds[oldArcheTypeId].emplace_back(CachedLastChunk{ oldChunk, static_cast<int>(oldChunkIndex) });
                 }
             }
         }
@@ -268,70 +308,77 @@ namespace ecs
 
         EntityId allocateNewEntity(ComponentArcheTypeId archeTypeId)
         {
-            // check if we can fit the new entity to last used chunk
-            //auto& lastUsed = m_lastUsedChunk[archeTypeId];
-            //if (lastUsed != -1)
-            //{
-            //    auto ch = m_chunks[archeTypeId][lastUsed];
-            //    if (ch->available())
-            //    {
-            //        return createEntityId(ch->allocate(), lastUsed, archeTypeId);
-            //    }
-            //}
-            auto& chunkList = m_chunks[archeTypeId];
-            auto& chunkMask = m_chunkMask[archeTypeId];
+            // first we check if we're allocating from same archetype than last time
+            // this is by far fastest as long as archetype doesn't change
+            if (m_lastArcheTypeId == archeTypeId && m_lastUsedChunk.chunk->available())
+                    return createEntityId(
+                        m_lastUsedChunk.chunk->allocate(),
+                        m_lastUsedChunk.id, archeTypeId);
 
-            if (m_lastArcheTypeId == archeTypeId)
+            // then we check the last used chunk from the archetype specific last chunk
+            if (m_lastArcheTypeId != archeTypeId && m_lastArcheTypeId != InvalidArcheTypeId)
             {
-                //when the archetype changes between every call. this is never called.
-
-
-                if (m_lastUsedChunk->available())
-                    return createEntityId(m_lastUsedChunk->allocate(), m_lastUsedChunkId, archeTypeId);
-                else
+                auto& perArcheType = m_lastUsedChunkPerArcheType[archeTypeId];
+                if (perArcheType.chunk && perArcheType.chunk->available())
                 {
-                    chunkMask.clear(m_lastUsedChunkId);
-                    //LOG("Clearing bit: %i", m_lastUsedChunkId);
-                }
-
-                // find the next free chunk
-                engine::BitSetDynamic::Iterator findChunk(&chunkMask, m_lastUsedChunkId);
-                if (findChunk != chunkMask.end())
-                {
-                    auto emptyChunkId = *findChunk;
-                    m_lastUsedChunkId = emptyChunkId;
-                    //LOG("Setting last used archetype 1: %i chunk Id: %i", archeTypeId, m_lastUsedChunkId);
-                    while (emptyChunkId >= chunkList.size())
-                        chunkList.emplace_back(m_chunkStorage.allocateChunk(archeTypeId));
-                    m_lastUsedChunk = chunkList[emptyChunkId];
                     m_lastArcheTypeId = archeTypeId;
-                    return createEntityId(m_lastUsedChunk->allocate(), m_lastUsedChunkId, archeTypeId);
+                    m_lastUsedChunk.id = perArcheType.id;
+                    m_lastUsedChunk.chunk = perArcheType.chunk;
+                    return createEntityId(
+                        perArcheType.chunk->allocate(),
+                        perArcheType.id, archeTypeId);
                 }
             }
 
-            // find any chunk that has space
+            // next we'll check if there are chunks that have gotten more space
+            // as a result of erasing some entity from them
+            for (auto notFull = m_partiallyFullChunkIds[archeTypeId].begin(); notFull != m_partiallyFullChunkIds[archeTypeId].end(); ++notFull)
+            {
+                if (notFull->chunk->available())
+                {
+                    m_lastArcheTypeId = archeTypeId;
+                    m_lastUsedChunk.id = notFull->id;
+                    m_lastUsedChunk.chunk = notFull->chunk;
+                    m_partiallyFullChunkIds[archeTypeId].erase(notFull);
+                    return createEntityId(
+                        m_lastUsedChunk.chunk->allocate(),
+                        m_lastUsedChunk.id, archeTypeId);
+                }
+                else
+                    notFull = m_partiallyFullChunkIds[archeTypeId].erase(notFull);
+            }
+
+            auto& chunkList = m_chunks[archeTypeId];
+
+#ifdef LOOK_FOR_PARTIAL_CHUNKS
+            // this would find free space from the entire chunk list
+            // but it can get really slow!
+            auto& chunkMask = m_chunkMask[archeTypeId];
             auto nonFullChunk = chunkMask.begin();
             if (nonFullChunk != chunkMask.end())
             {
                 auto emptyChunkId = *nonFullChunk;
-                m_lastUsedChunkId = emptyChunkId;
-                //LOG("Setting last used archetype 2: %i chunk Id: %i", archeTypeId, emptyChunkId);
+                m_lastUsedChunk.id = emptyChunkId;
+                
+                // make sure we actually have the necessary amount of chunks
                 while (emptyChunkId >= chunkList.size())
                     chunkList.emplace_back(m_chunkStorage.allocateChunk(archeTypeId));
-                m_lastUsedChunk = chunkList[emptyChunkId];
+                m_lastUsedChunk.chunk = chunkList[emptyChunkId];
                 m_lastArcheTypeId = archeTypeId;
-                if (m_lastUsedChunk->available())
-                    return createEntityId(m_lastUsedChunk->allocate(), m_lastUsedChunkId, archeTypeId);
+            
+                if (m_lastUsedChunk.chunk->available())
+                    return createEntityId(m_lastUsedChunk.chunk->allocate(), m_lastUsedChunk.id, archeTypeId);
                 else
                 {
-                    chunkMask.clear(m_lastUsedChunkId);
-                    //LOG("Clearing bit: %i", m_lastUsedChunkId);
+                    chunkMask.clear(m_lastUsedChunk.id);
                 }
             }
-            
-            // or create new chunk if one wasn't available
+#endif
+
+            // then we'll just create a new chunk
             chunkList.emplace_back(m_chunkStorage.allocateChunk(archeTypeId));
-            
+
+#ifdef LOOK_FOR_PARTIAL_CHUNKS
             // resize chunk mask
             auto newChunkCount = chunkList.size();
             if (newChunkCount > chunkMask.sizeBits())
@@ -339,21 +386,20 @@ namespace ecs
                 if (chunkMask.sizeBits() == 0)
                 {
                     chunkMask.resize(512, true);
-                    //LOG("Resizing archetype %i chunk mask to: %i", archeTypeId, 512);
                 }
                 else
                 {
                     chunkMask.resize(chunkMask.sizeBits() * 2, true);
-                    //LOG("Resizing archetype %i chunk mask to: %i", archeTypeId, chunkMask.sizeBits());
                 }
             }
+#endif
 
-            //lastUsed = chunkList.size() - 1;
-            m_lastUsedChunkId = chunkList.size() - 1;
-            //LOG("Setting last used archetype 3: %i chunk Id: %i", archeTypeId, m_lastUsedChunkId);
-            m_lastUsedChunk = chunkList[m_lastUsedChunkId];
+            m_lastUsedChunk.id = chunkList.size() - 1;
+            m_lastUsedChunk.chunk = chunkList[m_lastUsedChunk.id];
             m_lastArcheTypeId = archeTypeId;
-            return createEntityId(m_lastUsedChunk->allocate(), m_lastUsedChunkId, archeTypeId);
+            m_lastUsedChunkPerArcheType[archeTypeId].chunk = m_lastUsedChunk.chunk;
+            m_lastUsedChunkPerArcheType[archeTypeId].id = m_lastUsedChunk.id;
+            return createEntityId(m_lastUsedChunk.chunk->allocate(), m_lastUsedChunk.id, archeTypeId);
         }
 
         bool hasComponent(const Entity& entity, ComponentTypeId componentTypeId)
@@ -397,7 +443,7 @@ namespace ecs
         void copyRaw(T* data, size_t elements)
         {
             // Component type id list
-            auto typeId = ComponentTypeStorage::typeId<typename std::remove_reference<T>::type>();
+            auto typeId = m_componentTypeStorage.typeId<typename std::remove_reference<T>::type>();
             ArcheTypeSet typeSet;
             typeSet.set(typeId);
 
@@ -415,7 +461,7 @@ namespace ecs
                         memcpy(
                             dst, 
                             srcPtr, 
-                            chunk->size() * ComponentTypeStorage::typeInfo(typeId).typeSizeBytes
+                            chunk->size() * m_componentTypeStorage.typeInfo(typeId).typeSizeBytes
                         );
                         dst += chunk->size();
                     }
@@ -448,13 +494,26 @@ namespace ecs
     private:
         friend class Entity;
         Entity m_emptyEntity;
+        size_t m_archeTypeCount;
         engine::vector<engine::vector<Chunk*>> m_chunks;
+#ifdef LOOK_FOR_PARTIAL_CHUNKS
         engine::vector<engine::BitSetDynamic> m_chunkMask;
-        //engine::vector<int> m_lastUsedChunk;
-
+#endif
+        
+        // for fast path check if we're modifying the same archetype as last time
+        struct CachedLastChunk
+        {
+            Chunk* chunk = nullptr;
+            ChunkId id = -1;
+        };
         ComponentArcheTypeId m_lastArcheTypeId;
-        Chunk* m_lastUsedChunk;
-        int m_lastUsedChunkId;
+        CachedLastChunk m_lastUsedChunk;
+
+        // somewhat fast path if the archetype has changed
+        engine::vector<CachedLastChunk> m_lastUsedChunkPerArcheType;
+
+        // list of partly full chunks
+        engine::vector<engine::vector<CachedLastChunk>> m_partiallyFullChunkIds;
 
         ComponentTypeStorage m_componentTypeStorage;
         ArcheTypeStorage m_archeTypeStorage;

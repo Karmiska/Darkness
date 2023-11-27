@@ -84,6 +84,11 @@ namespace ecs
             return m_elements - m_used;
         }
 
+        bool full() const
+        {
+            return m_elements == m_used;
+        }
+
         bool empty() const
         {
             return m_used == 0;
