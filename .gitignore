@@ -12,6 +12,10 @@
 
 ide/
 
+darkness-externals/
+darkness-engine/data/shaders/
+darkness-engine/include/shaders/
+darkness-engine/include/protocols/
 
 # Build results
 [Dd]ebug/
