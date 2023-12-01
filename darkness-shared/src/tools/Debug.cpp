@@ -374,3 +374,87 @@ void DebugPureError(const char* /*location*/, const char* msg, ...)
 
     std::cout << buffer.data() << std::flush;
 }
+
+void DebugRaw(const char*, const char* msg, ...)
+{
+    engine::vector<char> message(32768);
+    va_list arguments;
+    va_start(arguments, msg);
+    vsprintf_s(message.data(), 32768, msg, arguments);
+    va_end(arguments);
+
+    engine::vector<char> buffer(32768);
+    sprintf_s(buffer.data(), 32768, "%s", message.data());
+
+#ifdef _WIN32
+    OutputDebugStringA(buffer.data());
+#endif
+
+    if (customDebugMessageHandler)
+        customDebugMessageHandler(buffer.data());
+
+    std::cout << buffer.data() << std::flush;
+}
+
+void DebugRawInfo(const char*, const char* msg, ...)
+{
+    engine::vector<char> message(32768);
+    va_list arguments;
+    va_start(arguments, msg);
+    vsprintf_s(message.data(), 32768, msg, arguments);
+    va_end(arguments);
+
+    engine::vector<char> buffer(32768);
+    sprintf_s(buffer.data(), 32768, "%s", message.data());
+
+#ifdef _WIN32
+    OutputDebugStringA(buffer.data());
+#endif
+
+    if (customDebugMessageHandler)
+        customDebugMessageHandler(buffer.data());
+
+    std::cout << buffer.data() << std::flush;
+}
+
+void DebugRawWarning(const char*, const char* msg, ...)
+{
+    engine::vector<char> message(32768);
+    va_list arguments;
+    va_start(arguments, msg);
+    vsprintf_s(message.data(), 32768, msg, arguments);
+    va_end(arguments);
+
+    engine::vector<char> buffer(32768);
+    sprintf_s(buffer.data(), 32768, "%s", message.data());
+
+#ifdef _WIN32
+    OutputDebugStringA(buffer.data());
+#endif
+
+    if (customDebugMessageHandler)
+        customDebugMessageHandler(buffer.data());
+
+    std::cout << buffer.data() << std::flush;
+}
+
+void DebugRawError(const char*, const char* msg, ...)
+{
+    engine::vector<char> message(32768);
+    va_list arguments;
+    va_start(arguments, msg);
+    vsprintf_s(message.data(), 32768, msg, arguments);
+    va_end(arguments);
+
+    engine::vector<char> buffer(32768);
+    sprintf_s(buffer.data(), 32768, "%s", message.data());
+
+#ifdef _WIN32
+    OutputDebugStringA(buffer.data());
+#endif
+
+    if (customDebugMessageHandler)
+        customDebugMessageHandler(buffer.data());
+
+    std::cout << buffer.data() << std::flush;
+}

@@ -2,7 +2,7 @@
 
 #include "containers/vector.h"
 #include "tools/ToolsCommon.h"
-#include "ComponentTypeStorage.h"
+#include "TypeStorage.h"
 #include "ArcheTypeStorage.h"
 #include "Entity.h"
 #include <stack>
@@ -42,7 +42,7 @@ namespace ecs
         // storageBytes is 64 bytes aligned ptr.
         // it contains enough space for (capacity() * elementSizeBytes()) + typePaddingSizeBytes()
         // typePaddingSizeBytes() = 64 bytes after each component data
-        void initialize(ComponentTypeStorage& componentTypeStorage, void* storageBytes, size_t bytes)
+        void initialize(TypeStorage& componentTypeStorage, void* storageBytes, size_t bytes)
         {
             auto ptr = reinterpret_cast<uintptr_t>(storageBytes);
             for (auto&& type : m_componentTypeIds)
@@ -128,7 +128,7 @@ namespace ecs
         void swap(uint64_t a, uint64_t b)
         {
             for (auto&& type : m_componentData)
-                static_cast<ComponentDataBase*>(type)->swap(a, b);
+                type->swap(a, b);
         }
 
         void free(uint64_t id)
@@ -162,7 +162,7 @@ namespace ecs
             for (auto&& type : m_componentTypeIds)
             {
                 if (type == componentTypeId)
-                    return static_cast<ComponentData<typename std::remove_reference<T>::type>*>(m_componentData[index])->data();
+                    return static_cast<TypeData<typename std::remove_reference<T>::type>*>(m_componentData[index])->data();
                 ++index;
             }
             return nullptr;
@@ -175,7 +175,7 @@ namespace ecs
             for (auto&& type : m_componentTypeIds)
             {
                 if (type == componentTypeId)
-                    return static_cast<ComponentDataBase*>(m_componentData[index])->rawData();
+                    return m_componentData[index]->rawData();
                 ++index;
             }
             return nullptr;
@@ -205,7 +205,7 @@ namespace ecs
         size_t m_elementSizeBytes;
         size_t m_typePaddingSizeBytes;
         ArcheTypeSet m_componentTypeIds;
-        engine::vector<ComponentDataBase*> m_componentData;
+        engine::vector<TypeDataBase*> m_componentData;
 
         // should be optimized as bitset
 #ifndef NOHOLES

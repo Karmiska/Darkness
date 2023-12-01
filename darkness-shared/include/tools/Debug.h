@@ -16,6 +16,11 @@ void DebugPureInfo(const char* location, const char* msg, ...);
 void DebugPureWarning(const char* location, const char* msg, ...);
 void DebugPureError(const char* location, const char* msg, ...);
 
+void DebugRaw(const char*, const char* msg, ...);
+void DebugRawInfo(const char*, const char* msg, ...);
+void DebugRawWarning(const char*, const char* msg, ...);
+void DebugRawError(const char*, const char* msg, ...);
+
 void DebugAssert(const char* condition, const char* location);
 void DebugAssert(const char* condition, const char* location, const char* msg, ...);
 
@@ -40,3 +45,8 @@ void DebugAssert(const char* condition, const char* location, const char* msg, .
 #define LOG_PURE_INFO(...) DebugPureInfo(DBGLOC, __VA_ARGS__)
 #define LOG_PURE_WARNING(...) DebugPureWarning(DBGLOC, __VA_ARGS__)
 #define LOG_PURE_ERROR(...) DebugPureError(DBGLOC, __VA_ARGS__)
+
+#define LOG_RAW(...) DebugRaw("", __VA_ARGS__)
+#define LOG_RAW_INFO(...) DebugRawInfo(DBGLOC, __VA_ARGS__)
+#define LOG_RAW_WARNING(...) DebugRawWarning(DBGLOC, __VA_ARGS__)
+#define LOG_RAW_ERROR(...) DebugRawError(DBGLOC, __VA_ARGS__)

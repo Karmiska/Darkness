@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ComponentData.h"
+#include "Chunk.h"
 #include "tools/ToolsCommon.h"
 #include <atomic>
 
@@ -62,7 +62,7 @@ namespace ecs
     class ChunkStorage
     {
     private:
-        ComponentTypeStorage& m_componentTypeStorage;
+        TypeStorage& m_componentTypeStorage;
         ArcheTypeStorage& m_archeTypeStorage;
         void* m_storageAllocation;
         
@@ -104,7 +104,7 @@ namespace ecs
         }
     public:
         ChunkStorage(
-            ComponentTypeStorage& componentTypeStorage, 
+            TypeStorage& componentTypeStorage, 
             ArcheTypeStorage& archeTypeStorage)
             : m_componentTypeStorage{ componentTypeStorage }
             , m_archeTypeStorage{ archeTypeStorage }

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ComponentTypeStorage.h"
+#include "TypeStorage.h"
 #include <type_traits>
 #include <string_view>
 

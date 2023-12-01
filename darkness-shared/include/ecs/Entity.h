@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ecs/ComponentTypeStorage.h"
+#include "TypeStorage.h"
 #include "ArcheTypeStorage.h"
 #include <cstdint>
 #include <tuple>
@@ -40,7 +40,7 @@ namespace ecs
     class Entity
     {
     public:
-        Entity(Ecs* ecs, ComponentTypeStorage* componentTypeStorage, EntityId _entityId)
+        Entity(Ecs* ecs, TypeStorage* componentTypeStorage, EntityId _entityId)
             : m_ecs{ ecs }
             , m_componentTypeStorage{ componentTypeStorage }
             , entityId{ _entityId }
@@ -48,7 +48,7 @@ namespace ecs
 
     private:
         Ecs* m_ecs;
-        ComponentTypeStorage* m_componentTypeStorage;
+        TypeStorage* m_componentTypeStorage;
     public:
 
         EntityId entityId;

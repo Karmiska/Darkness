@@ -7,7 +7,7 @@
 #include "tools/Debug.h"
 #include "tools/ToolsCommon.h"
 #include "containers/BitSet.h"
-#include "ComponentTypeStorage.h"
+#include "TypeStorage.h"
 
 #include <typeinfo>
 #include <cstdint>
@@ -56,7 +56,7 @@ namespace ecs
     class ArcheTypeStorage
     {
     public:
-        ArcheTypeStorage(ComponentTypeStorage& componentTypeStorage)
+        ArcheTypeStorage(TypeStorage& componentTypeStorage)
             : m_componentTypeStorage{ componentTypeStorage }
         {}
 
@@ -161,7 +161,7 @@ namespace ecs
             return count;
         }
 
-        ComponentTypeStorage& m_componentTypeStorage;
+        TypeStorage& m_componentTypeStorage;
         engine::vector<ArcheTypeContainer> m_archeTypes;
     };
 

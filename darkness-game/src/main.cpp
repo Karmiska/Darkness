@@ -24,6 +24,8 @@ constexpr size_t DataCount = 100'000'000;
 #include "ecs/Ecs.h"
 #include "ecs/TypeSort.h"
 
+//#include "ChessEngine.h"
+
 #include <xmmintrin.h>
 
 class Vector3f
@@ -318,6 +320,17 @@ int main(int argc, char* argv[])
 
 int doWork()
 {
+	//std::this_thread::sleep_for(std::chrono::milliseconds(400));
+	//chess::ChessEngine chessEngine;
+	//chessEngine.step();
+	//chessEngine.step();
+	//chessEngine.step();
+	//chessEngine.step();
+	//
+	//return 0;
+	//
+
+
 #ifndef ECSTEST2
     Application app;
 

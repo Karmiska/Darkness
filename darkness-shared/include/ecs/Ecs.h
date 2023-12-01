@@ -1,7 +1,7 @@
 #pragma once
 
-#include "ecs/ComponentData.h"
-#include "ecs/ComponentTypeStorage.h"
+#include "ecs/Chunk.h"
+#include "ecs/TypeStorage.h"
 #include "ecs/ChunkStorage.h"
 #include "ecs/Entity.h"
 #include "tools/ToolsCommon.h"
@@ -69,7 +69,7 @@ namespace ecs
             }
         }
 
-        ComponentTypeStorage& componentTypeStorage()
+        TypeStorage& componentTypeStorage()
         {
             return m_componentTypeStorage;
         }
@@ -82,7 +82,7 @@ namespace ecs
         template<typename T>
         uint64_t typeIndex()
         {
-            return ComponentTypeStorage::typeId<typename std::remove_reference<T>::type>();
+            return TypeStorage::typeId<typename std::remove_reference<T>::type>();
         }
 
         // These unpack component type id:s to a vector from template arguments
@@ -509,7 +509,7 @@ namespace ecs
         // list of partly full chunks
         engine::vector<engine::vector<CachedLastChunk>> m_partiallyFullChunkIds;
 
-        ComponentTypeStorage m_componentTypeStorage;
+        TypeStorage m_componentTypeStorage;
         ArcheTypeStorage m_archeTypeStorage;
         ChunkStorage m_chunkStorage;
 
