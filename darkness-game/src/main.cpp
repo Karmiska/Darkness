@@ -16,8 +16,8 @@ using namespace application;
 #undef max
 #include <cmath>
 
-//constexpr size_t DataCount = 100'000'000;
 constexpr size_t DataCount = 100'000'000;
+//constexpr size_t DataCount = 10'000;
 //constexpr size_t DataCount = 100;
 
 #include "engine/Ecs.h"
@@ -205,10 +205,12 @@ public:
 	Vector4f position;
 #endif
 
-	////EcsTransform()
-	////	: position{ 1.0f, 1.0f, 1.0f, 1.0f }
-	////	//: position{ arandomFloat(), arandomFloat(), arandomFloat(), 1.0f }
-	////{}
+	//EcsTransform()
+	//	: position{ 1.0f, 1.0f, 1.0f, 1.0f }
+	//	//: position{ arandomFloat(), arandomFloat(), arandomFloat(), 1.0f }
+	//{
+	//	LOG("noh");
+	//}
 	//
 	//EcsTransform(const Vector4f& _position)
 	//	: position{ _position }
@@ -320,6 +322,7 @@ int main(int argc, char* argv[])
 
 int doWork()
 {
+
 	//std::this_thread::sleep_for(std::chrono::milliseconds(400));
 	//chess::ChessEngine chessEngine;
 	//chessEngine.step();
@@ -460,7 +463,8 @@ int doWork()
 			});
 #endif
 
-
+		auto archeType = ecs.archeType<EcsTransform, EcsRigidBody, A, B>();
+		auto archeTypeId = archeType.id();
 
 		LARGE_INTEGER freq;
 		QueryPerformanceFrequency(&freq);
@@ -472,8 +476,7 @@ int doWork()
 
 		//void* mem = malloc(5ull * 1024ull * 1024ull * 1024ull);
 
-		auto archeType = ecs.archeType<EcsTransform, EcsRigidBody, A, B>();
-		auto archeTypeId = archeType.id();
+		
 
 		LARGE_INTEGER start;
 		QueryPerformanceCounter(&start);
@@ -531,6 +534,14 @@ int doWork()
 			//hasA = entity.hasComponent<A>();
 			//hasB = entity.hasComponent<B>();
 		}
+
+		//ecs.query([](EcsTransform& transform, EcsRigidBody& rigidBody)
+		//	{
+		//		transform.position = {};
+		//		rigidBody.initialvelocity = {};
+		//		rigidBody.mass = 0.0f;
+		//		rigidBody.velocity = {};
+		//	});
 
 		//for (int i = 0; i < DataCount; ++i)
 		//{

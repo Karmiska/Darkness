@@ -86,7 +86,8 @@ namespace engine
     }
 
     RenderSetup::RenderSetup(GraphicsApi api, const char* name)
-        : m_window{ engine::make_shared<platform::Window>("Device test window", 1024, 768) }
+        : m_mode{ engine::EngineMode::OwnThread }
+        , m_window{ engine::make_shared<platform::Window>("Device test window", 1024, 768) }
         , m_device{ m_window, name, api }
         , m_swapChain{ m_device.createSwapChain(false, true) }
         , m_renderSemaphore{ m_device.createSemaphore(), m_device.createSemaphore() }

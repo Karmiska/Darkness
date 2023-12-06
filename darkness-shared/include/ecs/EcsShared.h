@@ -12,5 +12,6 @@ namespace ecs
     const ComponentArcheTypeId InvalidArcheTypeId = 0xffffff;
     static ComponentTypeId GlobalComponentTypeId = 0;
 
-    #define MaximumArcheTypes 1024
+    #define MaximumEcsTypes 1024
+    #define MaximumEcsArcheTypes 1024
 }

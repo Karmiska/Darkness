@@ -26,6 +26,8 @@
 #include <DirectML.h> // The DirectML header from the Windows SDK.
 //#include <DirectMLX.h>
 
+#undef WARP_DEVICE
+
 using namespace tools;
 
 #undef PERFORMANCE_MEASURING_MODE
@@ -59,19 +61,23 @@ namespace engine
 #ifndef _DURANGO
 			D3D_FEATURE_LEVEL featureLevel{ D3D_FEATURE_LEVEL_12_1 };
 
-            IDXGIFactory* pFactory;
-            HRESULT hr = CreateDXGIFactory(DARKNESS_IID_PPV_ARGS(&pFactory));
+            IDXGIFactory4* pFactory;
+            HRESULT hr = CreateDXGIFactory1(DARKNESS_IID_PPV_ARGS(&pFactory));
             ASSERT(hr == S_OK, "Could not create DXGI Factory");
 
             UINT i = 0;
             IDXGIAdapter* pAdapter;
-            engine::vector <IDXGIAdapter*> vAdapters;
+            engine::vector<IDXGIAdapter*> vAdapters;
 
 			auto preferredAdapterName = L"GeForce";
 			//auto preferredAdapterName = L"Radeon";
 			int preferredAdapterIndex = 0;
 
+#ifndef WARP_DEVICE
             while (pFactory->EnumAdapters(i, &pAdapter) != DXGI_ERROR_NOT_FOUND)
+#else
+            while (pFactory->EnumWarpAdapter(DARKNESS_IID_PPV_ARGS(&pAdapter)) != DXGI_ERROR_NOT_FOUND)
+#endif
             {
                 vAdapters.push_back(pAdapter);
 
@@ -83,7 +89,14 @@ namespace engine
 					preferredAdapterIndex = i;
 
                 ++i;
+#ifdef WARP_DEVICE
+                break;
+#endif
             }
+
+            
+
+
 #endif
 
 #ifndef _DURANGO

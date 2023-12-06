@@ -30,12 +30,12 @@ namespace shadercompiler
     CompileTask::CompileTask(ShaderLocator& locator, bool optimization, LogLevel logLevel)
         : m_logLevel{ logLevel }
     {
-        m_shaderProfiles["Compute"] = "cs_6_3";
-        m_shaderProfiles["Domain"] = "ds_6_3";
-        m_shaderProfiles["Geometry"] = "gs_6_3";
-        m_shaderProfiles["Hull"] = "hs_6_3";
-        m_shaderProfiles["Pixel"] = "ps_6_3";
-        m_shaderProfiles["Vertex"] = "vs_6_3";
+        m_shaderProfiles["Compute"] = "cs_6_2";
+        m_shaderProfiles["Domain"] = "ds_6_2";
+        m_shaderProfiles["Geometry"] = "gs_6_2";
+        m_shaderProfiles["Hull"] = "hs_6_2";
+        m_shaderProfiles["Pixel"] = "ps_6_2";
+        m_shaderProfiles["Vertex"] = "vs_6_2";
         m_shaderProfiles["Raygeneration"] = "lib_6_3";
         m_shaderProfiles["Intersection"] = "lib_6_3";
         m_shaderProfiles["Miss"] = "lib_6_3";

@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <new>
+#include <memory>
 
 namespace ecs
 {
@@ -17,21 +18,32 @@ namespace ecs
     template<typename T>
     class TypeData : public TypeDataBase
     {
-        const bool complex = !(std::is_standard_layout<T>().value && std::is_trivial<T>().value);
     public:
+        TypeData()
+            : m_data{ nullptr }
+            , m_elements{ 0 }
+        {}
+
         TypeData(T* data, size_t elements)
             : m_data{ data }
             , m_elements{ elements }
         {
-            if (complex)
-                new (m_data) T[elements];
+            std::uninitialized_default_construct_n(m_data, elements);
+        }
+
+        TypeData(const TypeData&) = delete;
+        TypeData& operator=(const TypeData&) = delete;
+
+        TypeData(TypeData&& data) noexcept
+        {
+            std::swap(m_data, data.m_data);
+            std::swap(m_elements, data.m_elements);
         }
 
         ~TypeData()
         {
-            if (complex)
-                for (size_t i = 0; i < m_elements; ++i)
-                    m_data[i].~T();
+            if(m_data)
+                std::destroy_n(m_data, m_elements);
         }
 
         T* data() { return m_data; }

@@ -19,6 +19,17 @@ namespace ecs
 {
     class Ecs
     {
+    private:
+        template<typename... T>
+        typename std::enable_if<sizeof...(T) == 0>::type
+            unpackTypes(ArcheTypeSet& result) { }
+
+        template<typename T, typename... Rest>
+        void unpackTypes(ArcheTypeSet& result)
+        {
+            result.set(m_componentTypeStorage.typeId<typename std::remove_reference<T>::type>());
+            unpackTypes<Rest& ...>(result);
+        }
     public:
         Ecs()
             : m_emptyEntity{ this, &m_componentTypeStorage, createEntityId(0, 0, InvalidArcheTypeId) }
@@ -28,7 +39,7 @@ namespace ecs
             , m_lastArcheTypeId{ InvalidArcheTypeId }
             , m_archeTypeCount{ 0 }
         {
-            updateArcheTypeStorage(MaximumArcheTypes);
+            updateArcheTypeStorage(MaximumEcsArcheTypes);
         }
 
         Entity createEntity()
@@ -85,18 +96,6 @@ namespace ecs
             return TypeStorage::typeId<typename std::remove_reference<T>::type>();
         }
 
-        // These unpack component type id:s to a vector from template arguments
-        template<typename... T>
-        typename std::enable_if<sizeof...(T) == 0>::type
-            unpackSystems(ArcheTypeSet& result) { }
-
-        template<typename T, typename... Rest>
-        void unpackSystems(ArcheTypeSet& result)
-        {
-            result.set(m_componentTypeStorage.typeId<typename std::remove_reference<T>::type>());
-            unpackSystems<Rest& ...>(result);
-        }
-
         // returns a pointer to the beginning of types component data
         template<typename T>
         std::tuple<typename std::remove_reference<T>::type*> packComponentPointers(Chunk& chunk)
@@ -131,7 +130,7 @@ namespace ecs
         {
             // Component type id list
             ArcheTypeSet typeIndexes;
-            unpackSystems<Args...>(typeIndexes);
+            unpackTypes<Args...>(typeIndexes);
 
             // get archetypes that have all of these component types
             engine::vector<ComponentArcheTypeId> archetypes = m_archeTypeStorage.archeTypesThatContain(typeIndexes);
@@ -462,16 +461,8 @@ namespace ecs
             }
         }
 
-        template<typename... T>
-        typename std::enable_if<sizeof...(T) == 0>::type
-            unpackTypes(ArcheTypeSet& result) { }
-
-        template<typename T, typename... Rest>
-        void unpackTypes(ArcheTypeSet& result)
-        {
-            result.set(m_componentTypeStorage.typeId<typename std::remove_reference<T>::type>());
-            unpackTypes<Rest& ...>(result);
-        }
+#if 0
+        
 
         // Chunk storage can be "preheated" to have chunks of certain archetype ready
         // so we can do memory allocation beforehand.
@@ -484,7 +475,7 @@ namespace ecs
             auto id = m_archeTypeStorage.archeTypeIdFromSet(typeSet);
             m_chunkStorage.reserve(id, bytes / PreferredChunkSizeBytes);
         }
-
+#endif
     private:
         friend class Entity;
         Entity m_emptyEntity;

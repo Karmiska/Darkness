@@ -1250,7 +1250,14 @@ namespace engine
 	TextureSRVOwner Device::createTextureSRV(const TextureDSVOwner& texture) const
     {
         TextureDescription desc = { texture.resource().texture().description() };
-        desc.format(Format::R32_FLOAT);
+        if(desc.descriptor.format == Format::D16_UNORM)
+            desc.format(Format::R16_FLOAT);
+        else if (desc.descriptor.format == Format::D32_FLOAT)
+            desc.format(Format::R32_FLOAT);
+        else if (desc.descriptor.format == Format::D24_UNORM_S8_UINT)
+            desc.format(Format::R32_FLOAT);
+        else if (desc.descriptor.format == Format::D32_FLOAT_S8X24_UINT)
+            desc.format(Format::R32_FLOAT);
 
 		TextureOwner textureOwner(
             texture.m_textureImplementation, 
