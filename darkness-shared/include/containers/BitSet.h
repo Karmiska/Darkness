@@ -224,6 +224,7 @@ namespace engine
                         return *this;
                     }
                     ++m_block;
+                    m_indexInternal = 0;
                 }
                 m_index = m_set->m_size;
                 return *this;
@@ -388,6 +389,7 @@ namespace engine
                         return *this;
                     }
                     ++m_block;
+                    m_indexInternal = 0;
                 }
                 m_index = EndIteratorValue;
                 return *this;
