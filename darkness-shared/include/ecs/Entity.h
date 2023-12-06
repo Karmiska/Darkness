@@ -2,15 +2,12 @@
 
 #include "TypeStorage.h"
 #include "ArcheTypeStorage.h"
+#include "EcsShared.h"
 #include <cstdint>
 #include <tuple>
 
 namespace ecs
 {
-    constexpr uint64_t EntityIdArcheTypeMask = 0xffffff0000000000;
-    constexpr uint64_t EntityIdChunkMask =     0x000000ffffff0000;
-    constexpr uint64_t EntityIdEntityMask =    0x000000000000ffff;
-
     using EntityId = uint64_t;
 
     inline uint64_t entityIndexFromEntityId(EntityId id)
@@ -25,7 +22,7 @@ namespace ecs
 
     inline ComponentArcheTypeId archeTypeIdFromEntityId(EntityId id)
     {
-        return (id & EntityIdArcheTypeMask) >> 40;
+        return (id & EntityIdArcheTypeMask) >> 48;
     };
 
     inline EntityId createEntityId(
@@ -33,7 +30,7 @@ namespace ecs
         uint64_t chunkIndex,
         ComponentArcheTypeId archeType)
     {
-        return (archeType << 40) | (chunkIndex << 16) | index;
+        return (archeType << 48) | (chunkIndex << 16) | index;
     };
 
     class Ecs;

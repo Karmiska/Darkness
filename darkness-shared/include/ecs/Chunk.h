@@ -3,6 +3,8 @@
 #include "containers/vector.h"
 #include "tools/ToolsCommon.h"
 #include "TypeStorage.h"
+#include "EcsShared.h"
+#include "ChunkStorageAllocation.h"
 #include "ArcheTypeStorage.h"
 #include "Entity.h"
 #include <stack>
@@ -12,9 +14,6 @@
 namespace ecs
 {
 #define NOHOLES
-
-    constexpr size_t PreferredChunkSizeBytes = 64 * 1024;
-    static const size_t ChunkDataAlignment = 64;
 
     // chunks have a maximum index of PreferredChunkSizeBytes if only one
     // element and its size is one byte. we store free chunk indexes in uint16.
@@ -28,6 +27,8 @@ namespace ecs
             ArcheTypeStorage& archeTypeStorage, 
             ComponentArcheTypeId archeType)
             : m_used{ 0 }
+            , m_fromStorageAllocation{ nullptr }
+            , m_archeType{ archeType }
         {
             auto archeTypeInfo = archeTypeStorage.archeTypeInfo(archeType);
             m_componentTypeIds = archeTypeInfo.set;
@@ -200,6 +201,11 @@ namespace ecs
             }
         }
 
+        ComponentArcheTypeId archeType() const
+        {
+            return m_archeType;
+        }
+
     private:
         size_t m_elements;
         size_t m_elementSizeBytes;
@@ -324,6 +330,10 @@ namespace ecs
             return Iterator(m_used);
         }
 #endif
+    private:
+        friend class ChunkStorage;
+        ChunkStorageAllocation* m_fromStorageAllocation;
+        ComponentArcheTypeId m_archeType;
     };
     
 }

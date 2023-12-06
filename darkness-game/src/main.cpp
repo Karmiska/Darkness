@@ -491,10 +491,10 @@ int doWork()
 				// Populating took : 8190.050781 ms
 				// Simulating took : 231.421707 ms
 				// Combined : 8421.479492 ms
-				//entity.addComponent<EcsTransform>();
-				//entity.addComponent<EcsRigidBody>();
-				//entity.addComponent<A>();
-				//entity.addComponent<B>();
+				entity.addComponent<EcsTransform>();
+				entity.addComponent<EcsRigidBody>();
+				entity.addComponent<A>();
+				entity.addComponent<B>();
 
 				// Testing with: 100000000 entities
 				// Prewarming took : 0.006100 ms
@@ -508,7 +508,7 @@ int doWork()
 				// Populating took : 395.063690 ms
 				// Simulating took : 232.233505 ms
 				// Combined : 627.301880 ms
-				entity.setComponents(archeTypeId);
+				//entity.setComponents(archeTypeId);
 			}
 
 
