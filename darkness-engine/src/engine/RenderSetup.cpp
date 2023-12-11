@@ -13,11 +13,12 @@ namespace engine
         EngineMode mode,
         const char* name,
         bool createModelResources, 
+        const engine::string& preferredAdapter,
         MessageCallback messageCallback)
         : m_mode{ mode }
         , m_window{ window }
         , m_messageCallback{ messageCallback }
-        , m_device{ m_window, name, api }
+        , m_device{ m_window, name, api, preferredAdapter }
         , m_swapChain{ mode == EngineMode::OwnThread ? m_device.createSwapChain(false, false) : nullptr }
         , m_renderSemaphore{ m_device.createSemaphore(), m_device.createSemaphore() }
         , m_presentSemaphore{ m_device.createSemaphore() }
@@ -85,10 +86,10 @@ namespace engine
         return m_device.loadTexture(textureBuffer);
     }
 
-    RenderSetup::RenderSetup(GraphicsApi api, const char* name)
+    RenderSetup::RenderSetup(GraphicsApi api, const char* name, const engine::string& preferredAdapter)
         : m_mode{ engine::EngineMode::OwnThread }
         , m_window{ engine::make_shared<platform::Window>("Device test window", 1024, 768) }
-        , m_device{ m_window, name, api }
+        , m_device{ m_window, name, api, preferredAdapter }
         , m_swapChain{ m_device.createSwapChain(false, true) }
         , m_renderSemaphore{ m_device.createSemaphore(), m_device.createSemaphore() }
         , m_presentSemaphore{ m_device.createSemaphore() }

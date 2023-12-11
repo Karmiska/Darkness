@@ -21,9 +21,8 @@ using namespace platform;
 using namespace engine;
 using namespace shaders;
 
-constexpr const char* DataLocation = "..\\..\\data";
-constexpr const char* ReferenceLocation = "..\\..\\data\\reference";
-constexpr const char* FailedLocation = "..\\..\\data\\failed";
+constexpr const char* ReferenceLocation = "..\\..\\..\\data\\reference";
+constexpr const char* FailedLocation = "..\\..\\..\\data\\failed";
 constexpr float MaximumAcceptableRms = 0.0001f;
 
 namespace engine
@@ -50,13 +49,23 @@ public:
     TextureRTV currentRTV();
 	TextureSRV currentRTVSRV();
     void submit(engine::CommandList& commandList);
-    void present();
+    void submitBlocking(engine::CommandList& commandList);
+    bool present();
     bool canContinue(bool defaultValue = false);
     engine::InputManager& inputManager();
+    engine::string preferredAdapter() const
+    {
+        return m_preferredAdapter;
+    }
+    void preferredAdapter(const engine::string& adapter)
+    {
+        m_preferredAdapter = adapter;
+    }
 private:
     engine::shared_ptr<RenderSetup> m_env;
     engine::shared_ptr<engine::InputManager> m_inputManager;
     engine::vector<engine::string> m_referencesChecked;
+    engine::string m_preferredAdapter;
 
     engine::string testName() const;
     void checkReference(const engine::string& testName);

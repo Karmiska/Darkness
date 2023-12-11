@@ -45,10 +45,14 @@ using namespace engine;
 
 namespace engine
 {
-    Device::Device(engine::shared_ptr<platform::Window> window, const char* deviceName, GraphicsApi api)
+    Device::Device(
+        engine::shared_ptr<platform::Window> window, 
+        const char* deviceName, 
+        GraphicsApi api, 
+        const engine::string& preferredAdapter)
         : m_api{ api }
         , m_impl( (m_api == GraphicsApi::DX12) ? 
-            static_pointer_cast<DeviceImplIf>(engine::shared_ptr<implementation::DeviceImplDX12>(new implementation::DeviceImplDX12(window))) :
+            static_pointer_cast<DeviceImplIf>(engine::shared_ptr<implementation::DeviceImplDX12>(new implementation::DeviceImplDX12(window, preferredAdapter))) :
             static_pointer_cast<DeviceImplIf>(engine::shared_ptr<implementation::DeviceImplVulkan>(new implementation::DeviceImplVulkan(window))) )
         , m_mutex{}
         , m_swapChain{}

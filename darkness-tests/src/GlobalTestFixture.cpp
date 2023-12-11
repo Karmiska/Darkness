@@ -2,6 +2,7 @@
 #include "tools/image/Image.h"
 #include "tools/image/Color.h"
 #include "tools/PathTools.h"
+#include "platform/Environment.h"
 
 GlobalEnvironment* envPtr;
 
@@ -78,7 +79,7 @@ engine::InputManager& GlobalEnvironment::inputManager()
 
 void GlobalEnvironment::SetUp()
 {
-    m_env = engine::make_shared<RenderSetup>(GraphicsApi::DX12, "GlobalEnvironment");
+    m_env = engine::make_shared<RenderSetup>(GraphicsApi::DX12, "GlobalEnvironment", m_preferredAdapter);
     m_env->window().setResizeCallback([&](int /*width*/, int /*height*/)
     {
         m_env->device().waitForIdle();
@@ -140,11 +141,17 @@ void GlobalEnvironment::submit(engine::CommandList& commandList)
     m_env->submit(commandList);
 }
 
-void GlobalEnvironment::present()
+void GlobalEnvironment::submitBlocking(engine::CommandList& commandList)
+{
+    m_env->submitBlocking(commandList);
+}
+
+bool GlobalEnvironment::present()
 {
     m_env->present(false);
-    m_env->window().processMessages();
+    auto res = m_env->window().processMessages();
     m_inputManager->update();
+    return res;
 }
 
 bool GlobalEnvironment::canContinue(bool defaultValue)
@@ -168,26 +175,25 @@ void GlobalEnvironment::checkReference(const engine::string& testName)
     m_referencesChecked.emplace_back(testName);
 
     // do we have the reference ?
-    auto reference = image::Image::createImage(pathJoin(getWorkingDirectory(), pathJoin(engine::string(ReferenceLocation), testName + ".bmp")), image::ImageType::BMP);
+    auto reference = image::Image::createImage(pathJoin(pathExtractFolder(engine::getExecutableDirectory()), pathJoin(engine::string(ReferenceLocation), testName + ".bmp")), image::ImageType::BMP);
     if (!reference)
     {
         LOG_ERROR("TEST MISSING REFERENCE: %s", testName.c_str());
     }
 
     // capture current frame
-    TextureRTV rtv = m_env->currentRTV();
-    TextureSRV srv = m_env->currentRTVSRV();
+    TextureSRV srv = m_env->prevRTVSRV();
     BufferSRV frame = device().createBufferSRV(engine::BufferDescription()
         .format(engine::Format::R8G8B8A8_UINT)
         .elementSize(engine::formatBytes(engine::Format::R8G8B8A8_UINT))
-        .elements(rtv.width() * rtv.height())
+        .elements(srv.width() * srv.height())
         .name("Frame capture")
         .usage(engine::ResourceUsage::GpuToCpu)
     );
 
     CommandList cmd = device().createCommandList("GlobalEnvironment::checkReference");
     cmd.copyTexture(srv, frame);
-    submit(cmd);
+    submitBlocking(cmd);
 
     auto ptr = frame.buffer().map(device());
 
@@ -198,7 +204,7 @@ void GlobalEnvironment::checkReference(const engine::string& testName)
         reference->convert();
         auto ref = reference->map(0, 0);
         
-        auto rms = computeRms(static_cast<uint8_t*>(ptr), ref.data, rtv.width(), rtv.height());
+        auto rms = computeRms(static_cast<uint8_t*>(ptr), ref.data, srv.width(), srv.height());
         if (rms > MaximumAcceptableRms)
         {
             writeFailed = true;
@@ -211,10 +217,10 @@ void GlobalEnvironment::checkReference(const engine::string& testName)
 
     if(writeFailed)
     {
-        auto failed = image::Image::createImage(pathJoin(engine::string(FailedLocation), testName + ".bmp"), image::ImageType::BMP, engine::Format::R8G8B8A8_UINT, rtv.width(), rtv.height());
+        auto failed = image::Image::createImage(pathJoin(pathExtractFolder(engine::getExecutableDirectory()), pathJoin(engine::string(FailedLocation), testName + ".bmp")), image::ImageType::BMP, engine::Format::R8G8B8A8_UINT, srv.width(), srv.height());
         failed->reserve();
         auto fail = failed->map(0, 0);
-        memcpy(const_cast<uint8_t*>(fail.data), ptr, formatBytes(engine::Format::R8G8B8A8_UINT, rtv.width(), rtv.height()));
+        memcpy(const_cast<uint8_t*>(fail.data), ptr, formatBytes(engine::Format::R8G8B8A8_UINT, srv.width(), srv.height()));
         failed->flipVertical();
         failed->convert();
         failed->save();

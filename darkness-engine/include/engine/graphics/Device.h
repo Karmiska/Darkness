@@ -243,7 +243,11 @@ namespace engine
     class Device
     {
     public:
-        Device(engine::shared_ptr<platform::Window> window, const char* deviceName, GraphicsApi api = GraphicsApi::DX12);
+        Device(
+            engine::shared_ptr<platform::Window> window, 
+            const char* deviceName, 
+            GraphicsApi api = GraphicsApi::DX12,
+            const engine::string& preferredAdapter = "");
 		void createModelResources();
         ~Device();
 

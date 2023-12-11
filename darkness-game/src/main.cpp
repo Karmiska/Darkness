@@ -16,11 +16,10 @@ using namespace application;
 #undef max
 #include <cmath>
 
+//constexpr size_t DataCount = 100'000'000;
 constexpr size_t DataCount = 100'000'000;
-//constexpr size_t DataCount = 10'000;
 //constexpr size_t DataCount = 100;
 
-#include "engine/Ecs.h"
 #include "ecs/Ecs.h"
 #include "ecs/TypeSort.h"
 
@@ -339,130 +338,9 @@ int doWork()
 
 #else
 	
-	//struct a {
-	//};
-	//struct b {
-	//};
-	//struct c {
-	//};
-	//
-	//auto tidA = ecs::ComponentTypeStorage::typeId<a>();
-	//auto tidB = ecs::ComponentTypeStorage::typeId<b>();
-	//auto tidC = ecs::ComponentTypeStorage::typeId<c>();
-	//
-	//auto t1 = ecs::ComponentTypeStorage::archeTypeId({ tidA });
-	//auto t2 = ecs::ComponentTypeStorage::archeTypeId({ tidB });
-	//auto t3 = ecs::ComponentTypeStorage::archeTypeId({ tidA, tidB });
-	//auto t4 = ecs::ComponentTypeStorage::archeTypeId({ tidB, tidA });
-	//auto t5 = ecs::ComponentTypeStorage::archeTypeId({ tidC });
-	//auto t6 = ecs::ComponentTypeStorage::archeTypeId({ tidA, tidB, tidC });
-	//auto t7 = ecs::ComponentTypeStorage::archeTypeId({ tidA, tidC, tidB });
-	//auto t8 = ecs::ComponentTypeStorage::archeTypeId({ tidB, tidA, tidC });
-	//auto t9 = ecs::ComponentTypeStorage::archeTypeId({ tidB, tidC, tidA });
-	//auto t10 = ecs::ComponentTypeStorage::archeTypeId({ tidC, tidA, tidB });
-	//auto t11 = ecs::ComponentTypeStorage::archeTypeId({ tidC, tidB, tidA });
-	//
-	//LOG("[%u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u", 
-	//	t1.id(), t2.id(), t3.id(), t4.id(), t5.id(), t6.id(), t7.id(), t8.id(), t9.id(), t10.id(), t11.id());
-	//
-	//
-	
-
-	//auto t1 = ecs::ComponentTypeStorage::archetypeId<a>();
-	//auto t2 = ecs::ComponentTypeStorage::archetypeId<b>();
-	//auto t3 = ecs::ComponentTypeStorage::archetypeId<a, b>();
-	//auto t4 = ecs::ComponentTypeStorage::archetypeId<b, a>();
-	//auto t5 = ecs::ComponentTypeStorage::archetypeId<c>();
-	//auto t6 = ecs::ComponentTypeStorage::archetypeId<a, b, c>();
-	//auto t7 = ecs::ComponentTypeStorage::archetypeId<a, c, b>();
-	//auto t8 = ecs::ComponentTypeStorage::archetypeId<b, a, c>();
-	//auto t9 = ecs::ComponentTypeStorage::archetypeId<b, c, a>();
-	//auto t10 = ecs::ComponentTypeStorage::archetypeId<c, a, b>();
-	//auto t11 = ecs::ComponentTypeStorage::archetypeId<c, b, a>();
-	//
-	//LOG("[%u, %u, %u, %u, %u, %u, %u, %u, %u, %u, %u", 
-	//	t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11);
-	//
-	//auto temp = ecs::ComponentTypeStorage::typeInfo(
-	//	ecs::ComponentTypeStorage::typeId<int>());
-	//auto temp2 = temp.create(10);
-	//decltype(temp2) a;
-	//
-	//Ent ent;
-	//ent.addComponent<int>();
-	//ent.addComponent<float>();
-
-	//constexpr size_t DataCount = 100;
-
 	{
 		ecs::Ecs ecs;
 		
-#if 0
-		int entityIndex = 0;
-		struct Selected {};
-
-		for (int i = 0; i < 5; ++i)
-		{
-			auto entity = ecs.createEntity();
-			entity.addComponents<EcsRigidBody>();
-			entity.addComponents<EcsTransform>();
-			entity.component<EcsTransform>().position = Vector4f{
-				static_cast<float>(entityIndex),
-				static_cast<float>(entityIndex+1), 
-				static_cast<float>(entityIndex+2), 
-				static_cast<float>(entityIndex+3) };
-			++entityIndex;
-		}
-
-		for (int i = 0; i < 5; ++i)
-		{
-			auto entity = ecs.createEntity();
-			entity.addComponents<EcsTransform>();
-			entity.addComponents<Selected>();
-			entity.component<EcsTransform>().position = Vector4f{
-				static_cast<float>(entityIndex),
-				static_cast<float>(entityIndex + 1),
-				static_cast<float>(entityIndex + 2),
-				static_cast<float>(entityIndex + 3) };
-			entity.addComponents<EcsRigidBody>();
-			++entityIndex;
-		}
-
-		for (int i = 0; i < 5; ++i)
-		{
-			auto entity = ecs.createEntity();
-			entity.addComponents<EcsTransform, Selected>();
-			entity.component<EcsTransform>().position = Vector4f{
-				static_cast<float>(entityIndex),
-				static_cast<float>(entityIndex + 1),
-				static_cast<float>(entityIndex + 2),
-				static_cast<float>(entityIndex + 3) };
-			++entityIndex;
-		}
-
-		for (int i = 0; i < 5; ++i)
-		{
-			auto entity = ecs.createEntity();
-			entity.addComponents<EcsTransform>();
-			entity.component<EcsTransform>().position = Vector4f{
-				static_cast<float>(entityIndex),
-				static_cast<float>(entityIndex + 1),
-				static_cast<float>(entityIndex + 2),
-				static_cast<float>(entityIndex + 3) };
-			entity.addComponents<EcsRigidBody>();
-			++entityIndex;
-		}
-
-		ecs.query([](EcsTransform& transform, Selected selected)
-			{
-				LOG("Transform: [%f, %f, %f, %f]",
-				transform.position.x,
-				transform.position.y,
-				transform.position.z,
-				transform.position.w);
-			});
-#endif
-
 		auto archeType = ecs.archeType<EcsTransform, EcsRigidBody, A, B>();
 		auto archeTypeId = archeType.id();
 
@@ -471,18 +349,16 @@ int doWork()
 
 		LARGE_INTEGER prewarm;
 		QueryPerformanceCounter(&prewarm);
-		//ecs.prewarmArcheType<EcsTransform, EcsRigidBody, A, B>(5ull * 1024ull * 1024ull * 1024ull);
-		//ecs.prewarmArcheType<EcsTransform, EcsRigidBody, A, B>(1024ull * 1024ull);
-
-		//void* mem = malloc(5ull * 1024ull * 1024ull * 1024ull);
-
-		
 
 		LARGE_INTEGER start;
 		QueryPerformanceCounter(&start);
+
+		engine::vector<ecs::EntityId> entities;
+
 		for (int i = 0; i < DataCount; ++i)
 		{
 			auto entity = ecs.createEntity();
+			entities.emplace_back(entity.entityId);
 
 			// Tests for adding components
 			{
@@ -534,6 +410,9 @@ int doWork()
 			//hasA = entity.hasComponent<A>();
 			//hasB = entity.hasComponent<B>();
 		}
+
+		for (auto&& entity : entities)
+			ecs.destroyEntity(entity);
 
 		//ecs.query([](EcsTransform& transform, EcsRigidBody& rigidBody)
 		//	{

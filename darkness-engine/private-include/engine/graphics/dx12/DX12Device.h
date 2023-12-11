@@ -66,7 +66,7 @@ namespace engine
         class DeviceImplDX12 : public DeviceImplIf
         {
         public:
-            DeviceImplDX12(engine::shared_ptr<platform::Window> window);
+            DeviceImplDX12(engine::shared_ptr<platform::Window> window, const engine::string& preferredAdapter = "");
             virtual ~DeviceImplDX12();
 
 			void createFences(Device& device) override;

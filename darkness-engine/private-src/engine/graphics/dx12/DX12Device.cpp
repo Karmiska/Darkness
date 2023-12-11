@@ -15,6 +15,7 @@
 #include "engine/graphics/Barrier.h"
 #include "engine/graphics/CommandList.h"
 #include "tools/Debug.h"
+#include "tools/PathTools.h"
 
 #include "shaders/core/shared_types/ClusterExecuteIndirect.hlsli"
 
@@ -46,7 +47,9 @@ namespace engine
 			return false;
 		};
 
-        DeviceImplDX12::DeviceImplDX12(engine::shared_ptr<platform::Window> window)
+        DeviceImplDX12::DeviceImplDX12(
+            engine::shared_ptr<platform::Window> window,
+            const engine::string& preferredAdapter)
             : m_mutex{}
             , m_device{}
 			, m_graphicsQueueUploadFence{ nullptr }
@@ -69,7 +72,7 @@ namespace engine
             IDXGIAdapter* pAdapter;
             engine::vector<IDXGIAdapter*> vAdapters;
 
-			auto preferredAdapterName = L"GeForce";
+            auto preferredAdapterNameWide = engine::toWideString(preferredAdapter);
 			//auto preferredAdapterName = L"Radeon";
 			int preferredAdapterIndex = 0;
 
@@ -85,8 +88,11 @@ namespace engine
                 pAdapter->GetDesc(&desc);
 
 				std::wstring name = desc.Description;
-				if (name.find(preferredAdapterName) != std::wstring::npos)
-					preferredAdapterIndex = i;
+                if (name.find(preferredAdapterNameWide) != std::wstring::npos)
+                {
+                    preferredAdapterIndex = i;
+                    break;
+                }
 
                 ++i;
 #ifdef WARP_DEVICE

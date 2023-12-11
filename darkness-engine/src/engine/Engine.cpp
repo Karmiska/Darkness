@@ -34,7 +34,7 @@ Engine::Engine(
     engine::shared_ptr<InputManager> inputManager)
     : m_mode{ mode }
     , m_window{ window }
-    , m_renderSetup{ engine::make_unique<RenderSetup>(window, api, mode, name, true, [this](const engine::vector<engine::string>& messages)
+    , m_renderSetup{ engine::make_unique<RenderSetup>(window, api, mode, name, true, "", [this](const engine::vector<engine::string>& messages)
         {
             m_logWindow.pushMessages(messages);
         }) }

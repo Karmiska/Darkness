@@ -34,6 +34,7 @@ namespace engine
             EngineMode mode,
             const char* name,
             bool createModelResources, 
+            const engine::string& preferredAdapter = "",
             MessageCallback messageCallback = [](const engine::vector<engine::string>& messages)
             {
                 if (messages.size() > 0)
@@ -44,7 +45,10 @@ namespace engine
                     }
                 }
             });
-        RenderSetup(GraphicsApi api, const char* name);
+        RenderSetup(
+            GraphicsApi api, 
+            const char* name, 
+            const engine::string& preferredAdapter = "");
 
         Device& device();
         SwapChain& swapChain();
