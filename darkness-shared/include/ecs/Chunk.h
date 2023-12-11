@@ -38,6 +38,7 @@ namespace ecs
 
             m_elements = chunkSizeForData / archeTypeInfo.sizeBytes;
             m_elementSizeBytes = archeTypeInfo.sizeBytes;
+            m_entityIds.resize(m_elements);
         }
 
         // storageBytes is 64 bytes aligned ptr.
@@ -130,6 +131,9 @@ namespace ecs
         {
             for (auto&& type : m_componentData)
                 type->swap(a, b);
+            auto id = m_entityIds[a];
+            m_entityIds[a] = m_entityIds[b];
+            m_entityIds[b] = id;
         }
 
         void free(uint64_t id)
@@ -199,6 +203,8 @@ namespace ecs
                 }
                 ++i;
             }
+            for (int i = 0; i < elements; ++i)
+                m_entityIds[dstIndex + i] = srcChunk.m_entityIds[srcIndex + i];
         }
 
         ComponentArcheTypeId archeType() const
@@ -206,12 +212,17 @@ namespace ecs
             return m_archeType;
         }
 
+        engine::vector<EntityId>& entities()
+        {
+            return m_entityIds;
+        }
     private:
         size_t m_elements;
         size_t m_elementSizeBytes;
         size_t m_typePaddingSizeBytes;
         ArcheTypeSet m_componentTypeIds;
         engine::vector<TypeDataBase*> m_componentData;
+        engine::vector<EntityId> m_entityIds;
 
         // should be optimized as bitset
 #ifndef NOHOLES

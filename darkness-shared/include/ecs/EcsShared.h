@@ -12,9 +12,9 @@ namespace ecs
     const ComponentArcheTypeId InvalidArcheTypeId = 0xffff;
     static ComponentTypeId GlobalComponentTypeId = 0;
 
-    constexpr uint64_t EntityIdArcheTypeMask = 0xffff000000000000;
-    constexpr uint64_t EntityIdChunkMask = 0x0000ffffffff0000;
-    constexpr uint64_t EntityIdEntityMask = 0x000000000000ffff;
+    constexpr uint64_t EntityAddressArcheTypeMask = 0xffff000000000000;
+    constexpr uint64_t EntityAddressChunkMask = 0x0000ffffffff0000;
+    constexpr uint64_t EntityAddressEntityMask = 0x000000000000ffff;
 
     constexpr size_t PreferredChunkSizeBytes = 64 * 1024;
     static const size_t ChunkDataAlignment = 64;
