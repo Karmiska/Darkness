@@ -25,6 +25,7 @@ using System.Collections.Generic;
 [module: Sharpmake.Include("../darkness-externals/metis.sharpmake.cs")]
 //[module: Sharpmake.Include("../darkness-externals/rynx/rynx_projects.sharpmake.cs")]
 [module: Sharpmake.Include("../darkness-externals/freetype.sharpmake.cs")]
+[module: Sharpmake.Include("../darkness-externals/soltrack.sharpmake.cs")]
 [module: Sharpmake.Include("../protocustombuild.sharpmake.cs")]
 
 [Generate]
@@ -146,6 +147,7 @@ public class DarknessEngine : DarknessStaticLibrary
         conf.AddPublicDependency<BZip2>(target);
         conf.AddPublicDependency<ImGui>(target);
         conf.AddPublicDependency<FreeType>(target);
+        conf.AddPublicDependency<SolTrack>(target);
 
         //conf.AddPublicDependency<Rynx>(target);
 
