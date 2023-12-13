@@ -8,24 +8,25 @@
 
 namespace ecs
 {
+    using EntityAddress = uint64_t;
     using EntityId = uint64_t;
 
-    inline uint64_t entityIndexFromEntityId(EntityId id)
+    inline uint64_t entityIndexFromEntityAddress(EntityAddress id)
     {
-        return (id & EntityIdEntityMask);
+        return (id & EntityAddressEntityMask);
     };
 
-    inline uint64_t chunkIndexFromEntityId(EntityId id)
+    inline uint64_t chunkIndexFromEntityAddress(EntityAddress id)
     {
-        return (id & EntityIdChunkMask) >> 16;
+        return (id & EntityAddressChunkMask) >> 16;
     };
 
-    inline ComponentArcheTypeId archeTypeIdFromEntityId(EntityId id)
+    inline ComponentArcheTypeId archeTypeIdFromEntityAddress(EntityAddress id)
     {
-        return (id & EntityIdArcheTypeMask) >> 48;
+        return (id & EntityAddressArcheTypeMask) >> 48;
     };
 
-    inline EntityId createEntityId(
+    inline EntityAddress createEntityAddress(
         uint64_t index,
         uint64_t chunkIndex,
         ComponentArcheTypeId archeType)
@@ -37,22 +38,27 @@ namespace ecs
     class Entity
     {
     public:
-        Entity(Ecs* ecs, TypeStorage* componentTypeStorage, EntityId _entityId)
+        Entity(
+            Ecs* ecs, 
+            TypeStorage* componentTypeStorage, 
+            EntityId _entityId, 
+            EntityAddress _entityAddress)
             : m_ecs{ ecs }
             , m_componentTypeStorage{ componentTypeStorage }
             , entityId{ _entityId }
+            , entityAddress{ _entityAddress }
         {}
 
     private:
         Ecs* m_ecs;
         TypeStorage* m_componentTypeStorage;
     public:
-
         EntityId entityId;
+        EntityAddress entityAddress;
         
         ComponentArcheTypeId archeType()
         {
-            return archeTypeIdFromEntityId(entityId);
+            return archeTypeIdFromEntityAddress(entityAddress);
         }
 
         template<typename T>
@@ -104,7 +110,7 @@ namespace ecs
         T& component()
         {
             T* ptr = reinterpret_cast<T*>(component(m_componentTypeStorage->typeId<typename std::remove_reference<T>::type>()));
-            return *(ptr + entityIndexFromEntityId(entityId));
+            return *(ptr + entityIndexFromEntityAddress(entityAddress));
         }
 
         void addComponent(ComponentTypeId componentTypeId);
@@ -124,7 +130,7 @@ namespace ecs
             return true;
         }
 
-        bool operator==(const Entity& entity) { return entityId == entity.entityId; }
-        bool operator!=(const Entity& entity) { return entityId != entity.entityId; }
+        bool operator==(const Entity& entity) { return entityAddress == entity.entityAddress; }
+        bool operator!=(const Entity& entity) { return entityAddress != entity.entityAddress; }
     };
 }

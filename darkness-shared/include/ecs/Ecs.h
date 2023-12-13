@@ -32,8 +32,7 @@ namespace ecs
         }
     public:
         Ecs()
-            : m_emptyEntity{ this, &m_componentTypeStorage, createEntityId(0, 0, InvalidArcheTypeId) }
-            , m_componentTypeStorage{}
+            : m_componentTypeStorage{}
             , m_archeTypeStorage{ m_componentTypeStorage }
             , m_chunkStorage{ m_componentTypeStorage, m_archeTypeStorage }
             , m_lastArcheTypeId{ InvalidArcheTypeId }
@@ -44,12 +43,78 @@ namespace ecs
 
         Entity createEntity()
         {
-            return m_emptyEntity;
+            auto addr = createEntityAddress(0, 0, InvalidArcheTypeId);
+            m_entities.emplace_back(addr);
+            return Entity{ this, &m_componentTypeStorage, m_entities.size()-1, addr };
         };
 
         Entity getEntity(EntityId id)
         {
-            return Entity(this, &m_componentTypeStorage, id);
+            return Entity(this, &m_componentTypeStorage, id, m_entities[id]);
+        };
+
+        void destroyEntity(EntityId id)
+        {
+            // swap places with last entityId
+            auto aId = id;
+            auto bId = m_entities.size() - 1;
+            if (aId != bId)
+            {
+                // update the last entity to point to new index
+                {
+                    auto address = m_entities[bId];
+                    ComponentArcheTypeId archeTypeId = archeTypeIdFromEntityAddress(address);
+                    auto entityIndex = entityIndexFromEntityAddress(address);
+                    auto chunkIndex = chunkIndexFromEntityAddress(address);
+                    m_chunks[archeTypeId][chunkIndex]->entities()[entityIndex] = aId;
+                }
+
+                //ongelma on se että chunkkeja ei voi poistaa koska entity id:ssä on chunkki indexi.
+                //poista se entity id:stä ja lisää se entity listaan addressin lisäksi
+
+                // update the removed entity to point to last index
+                {
+                    auto address = m_entities[aId];
+                    ComponentArcheTypeId archeTypeId = archeTypeIdFromEntityAddress(address);
+                    auto entityIndex = entityIndexFromEntityAddress(address);
+                    auto chunkIndex = chunkIndexFromEntityAddress(address);
+                    m_chunks[archeTypeId][chunkIndex]->entities()[entityIndex] = bId;
+                }
+
+                // swap the addressing
+                std::swap(m_entities[aId], m_entities[bId]);
+
+                id = bId;
+            }
+
+            // remove the entity from a chunk
+            {
+                auto address = m_entities[id];
+                ComponentArcheTypeId archeTypeId = archeTypeIdFromEntityAddress(address);
+                auto entityIndex = entityIndexFromEntityAddress(address);
+                auto chunkIndex = chunkIndexFromEntityAddress(address);
+
+                // swap the removed entity to last in chunk to avoid holes
+                auto& chunk = m_chunks[archeTypeId][chunkIndex];
+                auto chunkSize = chunk->size();
+
+                // if not already last
+                if (entityIndex < chunkSize - 1)
+                {
+                    chunk->swap(entityIndex, chunkSize - 1);
+
+                    // update ecs -> chunk entity address for the entity that got moved from last position
+                    m_entities[chunk->entities()[entityIndex]] = createEntityAddress(
+                        entityIndex, chunkIndex, archeTypeId);
+
+                    entityIndex = chunkSize - 1;
+                }
+
+                // remove the entity from it's old chunk
+                chunk->free(entityIndex);
+
+                possiblyFreeChunk(archeTypeId, chunkIndex, chunk);
+            }
         };
 
         template<typename T, typename... Rest>
@@ -113,16 +178,16 @@ namespace ecs
 
         // these call a query lambda with component references. the tuple contains the root pointers to component datas and we index to correct entity component with entityId
         template<typename Function, typename Tuple, size_t ... I>
-        auto callQueryLambda(Function f, Tuple t, const EntityId& entityId, std::index_sequence<I ...>)
+        auto callQueryLambda(Function f, Tuple t, const EntityAddress& entityAddress, std::index_sequence<I ...>)
         {
-            return f(*(std::get<I>(t) + entityId) ...);
+            return f(*(std::get<I>(t) + entityAddress) ...);
         }
 
         template<typename Function, typename Tuple>
-        auto callQueryLambda(Function f, Tuple t, const EntityId& entityId)
+        auto callQueryLambda(Function f, Tuple t, const EntityAddress& entityAddress)
         {
             static constexpr auto size = std::tuple_size<Tuple>::value;
-            return callQueryLambda(f, t, entityId, std::make_index_sequence<size>{});
+            return callQueryLambda(f, t, entityAddress, std::make_index_sequence<size>{});
         }
 
         template<typename Func, typename... Args>
@@ -183,12 +248,12 @@ namespace ecs
 
         void addComponent(Entity& entity, ComponentTypeId componentTypeId)
         {
-            modifyComponent(entity, m_archeTypeStorage.archeType(archeTypeIdFromEntityId(entity.entityId), componentTypeId).id());
+            modifyComponent(entity, m_archeTypeStorage.archeType(archeTypeIdFromEntityAddress(entity.entityAddress), componentTypeId).id());
         }
 
         void addComponents(Entity& entity, const ArcheTypeSet& typeIndexes)
         {
-            auto archeType = archeTypeIdFromEntityId(entity.entityId);
+            auto archeType = archeTypeIdFromEntityAddress(entity.entityAddress);
             if(archeType != InvalidArcheTypeId)
                 modifyComponent(entity, m_archeTypeStorage.archeType(m_archeTypeStorage.archeType(archeType).typeSet() | typeIndexes).id());
             else
@@ -197,7 +262,7 @@ namespace ecs
 
         void addComponents(Entity& entity, const ArcheTypeSet& typeIndexes, ComponentArcheTypeId id)
         {
-            auto archeType = archeTypeIdFromEntityId(entity.entityId);
+            auto archeType = archeTypeIdFromEntityAddress(entity.entityAddress);
             if (archeType != InvalidArcheTypeId)
                 modifyComponent(entity, m_archeTypeStorage.archeType(m_archeTypeStorage.archeType(archeType).typeSet() | typeIndexes).id());
             else
@@ -216,22 +281,80 @@ namespace ecs
 
         void removeComponent(Entity& entity, ComponentTypeId componentTypeId)
         {
-            auto archeTypeSet = m_archeTypeStorage.archeType(archeTypeIdFromEntityId(entity.entityId)).typeSet();
+            auto archeTypeSet = m_archeTypeStorage.archeType(archeTypeIdFromEntityAddress(entity.entityAddress)).typeSet();
             archeTypeSet.clear(componentTypeId);
             modifyComponent(entity, m_archeTypeStorage.archeType(archeTypeSet).id());
+        }
+
+        void possiblyFreeChunk(ComponentArcheTypeId archeTypeId, uint64_t chunkIndex, Chunk* chunk)
+        {
+            return;
+            // if the chunk is now empty. remove it. (keeping at least one chunk ready even if it's empty)
+            if (chunk->empty() && m_chunks[archeTypeId].size() > 1)
+            {
+                auto& lastUsedPerArcheType = m_lastUsedChunkPerArcheType[archeTypeId];
+                if (lastUsedPerArcheType.id == chunkIndex)
+                {
+                    lastUsedPerArcheType.id = -1;
+                    lastUsedPerArcheType.chunk = nullptr;
+                }
+                if (m_lastArcheTypeId == archeTypeId && m_lastUsedChunk.id == chunkIndex)
+                {
+                    m_lastArcheTypeId = InvalidArcheTypeId;
+                    m_lastUsedChunk.id = -1;
+                    m_lastUsedChunk.chunk = nullptr;
+                }
+
+                for (auto partial = m_partiallyFullChunkIds[archeTypeId].begin();
+                    partial != m_partiallyFullChunkIds[archeTypeId].end();)
+                {
+                    if (partial->id == chunkIndex)
+                        partial = m_partiallyFullChunkIds[archeTypeId].erase(partial);
+                    else
+                    {
+                        if (partial->id > chunkIndex)
+                            partial->id += 1;
+                        ++partial;
+                    }
+                }
+
+                m_chunkStorage.freeChunk(archeTypeId, m_chunks[archeTypeId][chunkIndex]);
+                m_chunks[archeTypeId].erase(m_chunks[archeTypeId].begin() + chunkIndex);
+            }
+            else if (!chunk->full())
+            {
+                bool found = false;
+                for (auto&& lastUsed : m_partiallyFullChunkIds[archeTypeId])
+                {
+                    if (lastUsed.chunk == chunk)
+                    {
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found)
+                    m_partiallyFullChunkIds[archeTypeId].emplace_back(CachedLastChunk{ chunk, static_cast<int>(chunkIndex) });
+            }
         }
 
         void modifyComponent(Entity& entity, ComponentArcheTypeId newArcheTypeId)
         {
             // Entity old info
-            ComponentArcheTypeId oldArcheTypeId = archeTypeIdFromEntityId(entity.entityId);
-            auto oldEntityIndex = entityIndexFromEntityId(entity.entityId);
-            auto oldChunkIndex = chunkIndexFromEntityId(entity.entityId);
+            ComponentArcheTypeId oldArcheTypeId = archeTypeIdFromEntityAddress(entity.entityAddress);
+            auto oldEntityIndex = entityIndexFromEntityAddress(entity.entityAddress);
+            auto oldChunkIndex = chunkIndexFromEntityAddress(entity.entityAddress);
 
             // allocate new entity
-            entity.entityId = allocateNewEntity(newArcheTypeId);
-            auto newEntityIndex = entityIndexFromEntityId(entity.entityId);
-            auto newEntityChunkIndex = chunkIndexFromEntityId(entity.entityId);
+            entity.entityAddress = allocateNewEntity(newArcheTypeId);
+            
+            // update ecs -> chunk binding
+            m_entities[entity.entityId] = entity.entityAddress;
+
+            auto newEntityIndex = entityIndexFromEntityAddress(entity.entityAddress);
+            auto newEntityChunkIndex = chunkIndexFromEntityAddress(entity.entityAddress);
+
+            // update chunk -> ecs binding
+            m_chunks[newArcheTypeId][newEntityChunkIndex]->entities()[newEntityIndex] = entity.entityId;
 
             // if this entity was in some other archetype previously
             if (oldArcheTypeId != InvalidArcheTypeId)
@@ -239,9 +362,16 @@ namespace ecs
                 // swap the removed entity to last in chunk to avoid holes
                 auto& oldChunk = m_chunks[oldArcheTypeId][oldChunkIndex];
                 auto chunkSize = oldChunk->size();
+
+                // if not already last
                 if (oldEntityIndex < chunkSize - 1)
                 {
                     oldChunk->swap(oldEntityIndex, chunkSize - 1);
+
+                    // update ecs -> chunk entity address for the entity that got moved from last position
+                    m_entities[oldChunk->entities()[oldEntityIndex]] = createEntityAddress(
+                        oldEntityIndex, oldChunkIndex, oldArcheTypeId);
+
                     oldEntityIndex = chunkSize - 1;
                 }
 
@@ -252,57 +382,16 @@ namespace ecs
                 // remove the entity from it's old chunk
                 oldChunk->free(oldEntityIndex);
 
-                // if the chunk is now empty. remove it. (keeping at least one chunk ready even if it's empty)
-                if (oldChunk->empty() && m_chunks[oldArcheTypeId].size() > 1)
-                {
-                    auto& lastUsedPerArcheType = m_lastUsedChunkPerArcheType[oldArcheTypeId];
-                    if (lastUsedPerArcheType.id == oldChunkIndex)
-                    {
-                        lastUsedPerArcheType.id = -1;
-                        lastUsedPerArcheType.chunk = nullptr;
-                    }
-                    if (m_lastArcheTypeId == oldArcheTypeId)
-                    {
-                        m_lastArcheTypeId = InvalidArcheTypeId;
-                        m_lastUsedChunk.id = -1;
-                        m_lastUsedChunk.chunk = nullptr;
-                    }
-
-                    for (auto partial = m_partiallyFullChunkIds[oldArcheTypeId].begin();
-                        partial != m_partiallyFullChunkIds[oldArcheTypeId].end(); ++partial)
-                    {
-                        if (partial->id == oldChunkIndex)
-                            partial = m_partiallyFullChunkIds[oldArcheTypeId].erase(partial);
-                        else if (partial->id > oldChunkIndex)
-                            ++partial->id;
-                    }
-
-                    m_chunkStorage.freeChunk(oldArcheTypeId, m_chunks[oldArcheTypeId][oldChunkIndex]);
-                    m_chunks[oldArcheTypeId].erase(m_chunks[oldArcheTypeId].begin() + oldChunkIndex);
-                }
-                else if (!oldChunk->full())
-                {
-                    bool found = false;
-                    for (auto&& lastUsed : m_partiallyFullChunkIds[oldArcheTypeId])
-                    {
-                        if (lastUsed.chunk == oldChunk)
-                        {
-                            found = true;
-                            break;
-                        }
-                    }
-                    if (!found)
-                        m_partiallyFullChunkIds[oldArcheTypeId].emplace_back(CachedLastChunk{ oldChunk, static_cast<int>(oldChunkIndex) });
-                }
+                possiblyFreeChunk(oldArcheTypeId, oldChunkIndex, oldChunk);
             }
         }
 
-        EntityId allocateNewEntity(ComponentArcheTypeId archeTypeId)
+        EntityAddress allocateNewEntity(ComponentArcheTypeId archeTypeId)
         {
             // first we check if we're allocating from same archetype than last time
             // this is by far fastest as long as archetype doesn't change
             if (m_lastArcheTypeId == archeTypeId && m_lastUsedChunk.chunk->available())
-                    return createEntityId(
+                    return createEntityAddress(
                         m_lastUsedChunk.chunk->allocate(),
                         m_lastUsedChunk.id, archeTypeId);
 
@@ -315,7 +404,7 @@ namespace ecs
                     m_lastArcheTypeId = archeTypeId;
                     m_lastUsedChunk.id = perArcheType.id;
                     m_lastUsedChunk.chunk = perArcheType.chunk;
-                    return createEntityId(
+                    return createEntityAddress(
                         perArcheType.chunk->allocate(),
                         perArcheType.id, archeTypeId);
                 }
@@ -331,7 +420,7 @@ namespace ecs
                     m_lastUsedChunk.id = notFull->id;
                     m_lastUsedChunk.chunk = notFull->chunk;
                     m_partiallyFullChunkIds[archeTypeId].erase(notFull);
-                    return createEntityId(
+                    return createEntityAddress(
                         m_lastUsedChunk.chunk->allocate(),
                         m_lastUsedChunk.id, archeTypeId);
                 }
@@ -390,20 +479,20 @@ namespace ecs
             m_lastArcheTypeId = archeTypeId;
             m_lastUsedChunkPerArcheType[archeTypeId].chunk = m_lastUsedChunk.chunk;
             m_lastUsedChunkPerArcheType[archeTypeId].id = m_lastUsedChunk.id;
-            return createEntityId(m_lastUsedChunk.chunk->allocate(), m_lastUsedChunk.id, archeTypeId);
+            return createEntityAddress(m_lastUsedChunk.chunk->allocate(), m_lastUsedChunk.id, archeTypeId);
         }
 
         bool hasComponent(const Entity& entity, ComponentTypeId componentTypeId)
         {
-            auto currentArcheType = m_archeTypeStorage.archeType(archeTypeIdFromEntityId(entity.entityId));
+            auto currentArcheType = m_archeTypeStorage.archeType(archeTypeIdFromEntityAddress(entity.entityAddress));
             return currentArcheType.contains(componentTypeId);
         }
 
         void* component(Entity& entity, ComponentTypeId componentTypeId)
         {
             // find out the archetype
-            ComponentArcheTypeId currentArcheType = archeTypeIdFromEntityId(entity.entityId);
-            auto chunkIndex = chunkIndexFromEntityId(entity.entityId);
+            ComponentArcheTypeId currentArcheType = archeTypeIdFromEntityAddress(entity.entityAddress);
+            auto chunkIndex = chunkIndexFromEntityAddress(entity.entityAddress);
 
             return m_chunks[currentArcheType][chunkIndex]->componentDataPointer(componentTypeId);
         }
@@ -425,9 +514,9 @@ namespace ecs
         }
 
         template<typename Component>
-        Component& query(EntityId entityId)
+        Component& query(EntityAddress entityAddress)
         {
-            return *(componentDataPointer<Component>(typeIndex<Component>()) + entityId);
+            return *(componentDataPointer<Component>(typeIndex<Component>()) + entityAddress);
         }
 
         template<typename T>
@@ -478,7 +567,6 @@ namespace ecs
 #endif
     private:
         friend class Entity;
-        Entity m_emptyEntity;
         size_t m_archeTypeCount;
         engine::vector<engine::vector<Chunk*>> m_chunks;
 #ifdef LOOK_FOR_PARTIAL_CHUNKS
@@ -504,6 +592,8 @@ namespace ecs
         ArcheTypeStorage m_archeTypeStorage;
         ChunkStorage m_chunkStorage;
 
-        //engine::vector<EntityId> m_entities;
+        // two way connection between an EntityId and the entity data inside a chunk.
+        // m_entities[EntityId] -> EntityAddress -> Chunk -> m_entityIds[EntityAddress.index] -> m_entities[EntityId]
+        engine::vector<EntityAddress> m_entities;
 };
 }
