@@ -35,7 +35,7 @@ int doWork()
 {
 #ifdef ECSTEST2
 	ecs::EcsPerformanceTest ecsPerfTest;
-	ecsPerfTest.runSmallTest();
+	ecsPerfTest.runTinyTest();
 #else
 	//game::GrassSystem grassSystem(20, 20);
 	//grassSystem.grow(60.0f * 60.0f * 24.0f * 30.0f); // 30 days

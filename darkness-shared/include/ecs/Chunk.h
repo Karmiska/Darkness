@@ -38,7 +38,6 @@ namespace ecs
 
             m_elements = chunkSizeForData / archeTypeInfo.sizeBytes;
             m_elementSizeBytes = archeTypeInfo.sizeBytes;
-            m_entityIds.resize(m_elements);
         }
 
         // storageBytes is 64 bytes aligned ptr.
@@ -47,6 +46,7 @@ namespace ecs
         void initialize(TypeStorage& componentTypeStorage, void* storageBytes, size_t bytes)
         {
             auto ptr = reinterpret_cast<uintptr_t>(storageBytes);
+            m_entityIds = reinterpret_cast<EntityId*>(reinterpret_cast<uint8_t*>(storageBytes) + bytes - (sizeof(EntityId) * m_elements));
             for (auto&& type : m_componentTypeIds)
             {
                 auto typeInfo = componentTypeStorage.typeInfo(type);
@@ -212,7 +212,7 @@ namespace ecs
             return m_archeType;
         }
 
-        engine::vector<EntityId>& entities()
+        EntityId* entities()
         {
             return m_entityIds;
         }
@@ -222,7 +222,7 @@ namespace ecs
         size_t m_typePaddingSizeBytes;
         ArcheTypeSet m_componentTypeIds;
         engine::vector<TypeDataBase*> m_componentData;
-        engine::vector<EntityId> m_entityIds;
+        EntityId* m_entityIds;
 
         // should be optimized as bitset
 #ifndef NOHOLES

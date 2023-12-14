@@ -288,7 +288,6 @@ namespace ecs
 
         void possiblyFreeChunk(ComponentArcheTypeId archeTypeId, uint64_t chunkIndex, Chunk* chunk)
         {
-            return;
             // if the chunk is now empty. remove it. (keeping at least one chunk ready even if it's empty)
             if (chunk->empty() && m_chunks[archeTypeId].size() > 1)
             {

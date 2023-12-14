@@ -22,6 +22,7 @@ namespace ecs
         LARGE_INTEGER start;
         LARGE_INTEGER populated;
         LARGE_INTEGER simulated;
+        LARGE_INTEGER erased;
 
         void performTest(size_t count);
         void printResults(size_t count) const;

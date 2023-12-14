@@ -87,7 +87,7 @@ namespace ecs
         Chunk* allocateNewChunk(ComponentArcheTypeId archeType)
         {
             auto chunk = new Chunk(m_archeTypeStorage, archeType);
-            auto chunkBytes = (chunk->elementSizeBytes() * chunk->capacity()) + chunk->typePaddingSizeBytes();
+            auto chunkBytes = (chunk->elementSizeBytes() * chunk->capacity()) + chunk->typePaddingSizeBytes() + (sizeof(EntityId) * chunk->capacity());
             chunk->initialize(m_componentTypeStorage, getStorageAllocation(chunkBytes), chunkBytes);
             chunk->m_fromStorageAllocation = m_storageAllocations[m_currentAllocationIndex];
             return chunk;

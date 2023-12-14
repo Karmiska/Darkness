@@ -133,22 +133,17 @@ namespace ecs
 		auto archeTypeId = archeType.id();
 
 		QueryPerformanceCounter(&prewarm);
+		engine::vector<ecs::EntityId> entities;
+		entities.resize(count);
 
 		QueryPerformanceCounter(&start);
-
-		engine::vector<ecs::EntityId> entities;
-		entities.reserve(count);
 		for (int i = 0; i < count; ++i)
 		{
 			auto entity = ecs.createEntity();
-			entities.emplace_back(entity.entityId);
+			entities[i] = entity.entityId;
 
 			entity.setComponents(archeTypeId);
 		}
-
-		//for (auto&& entity : entities)
-		//	ecs.destroyEntity(entity);
-
 		QueryPerformanceCounter(&populated);
 
 		GravityWell gravityWell;
@@ -158,6 +153,11 @@ namespace ecs
 		});
 
 		QueryPerformanceCounter(&simulated);
+
+		for (auto&& entity : entities)
+			ecs.destroyEntity(entity);
+
+		QueryPerformanceCounter(&erased);
 
 		printResults(count);
 	}
@@ -179,7 +179,11 @@ namespace ecs
 		measure.QuadPart *= 1000;
 		LOG_PURE("Simulating took: %f ms", static_cast<float>(static_cast<double>(measure.QuadPart) / static_cast<double>(freq.QuadPart)));
 
-		measure.QuadPart = simulated.QuadPart - prewarm.QuadPart;
+		measure.QuadPart = erased.QuadPart - simulated.QuadPart;
+		measure.QuadPart *= 1000;
+		LOG_PURE("Erasing: %f ms", static_cast<float>(static_cast<double>(measure.QuadPart) / static_cast<double>(freq.QuadPart)));
+
+		measure.QuadPart = erased.QuadPart - prewarm.QuadPart;
 		measure.QuadPart *= 1000;
 		LOG_PURE("Combined: %f ms", static_cast<float>(static_cast<double>(measure.QuadPart) / static_cast<double>(freq.QuadPart)));
 	}
