@@ -131,9 +131,10 @@ namespace ecs
         {
             for (auto&& type : m_componentData)
                 type->swap(a, b);
-            auto id = m_entityIds[a];
-            m_entityIds[a] = m_entityIds[b];
-            m_entityIds[b] = id;
+            std::swap(m_entityIds[a], m_entityIds[b]);
+            //auto id = m_entityIds[a];
+            //m_entityIds[a] = m_entityIds[b];
+            //m_entityIds[b] = id;
         }
 
         void free(uint64_t id)

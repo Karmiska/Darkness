@@ -3,7 +3,6 @@
 #include "ui/Frame.h"
 #include "ui/UiListView.h"
 #include "ui/UiListModel.h"
-#include "engine/Ecs.h"
 
 namespace ui
 {

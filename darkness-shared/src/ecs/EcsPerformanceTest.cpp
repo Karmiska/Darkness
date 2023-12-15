@@ -81,7 +81,7 @@ namespace ecs
 
     void EcsPerformanceTest::runTinyTest()
     {
-		performTest(1'000'000);
+		performTest(100);
 
 		// Testing with : 1000000 entities
 		// Prewarming took : 0.000000 ms

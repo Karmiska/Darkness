@@ -7,10 +7,12 @@
 #include "tools/ToolsCommon.h"
 #include "ecs/TypeSort.h"
 #include "ecs/EcsShared.h"
+#include "containers/BitSet.h"
 
 #include <functional>
 #include <execution>
 #include <type_traits>
+#include <stack>
 
 #define PARALLEL_FOR_LOOP
 #undef LOOK_FOR_PARTIAL_CHUNKS
@@ -44,8 +46,19 @@ namespace ecs
         Entity createEntity()
         {
             auto addr = createEntityAddress(0, 0, InvalidArcheTypeId);
-            m_entities.emplace_back(addr);
-            return Entity{ this, &m_componentTypeStorage, m_entities.size()-1, addr };
+
+            uint64_t newEntityIndex = 0;
+            if (!m_freeEntities.empty())
+            {
+                newEntityIndex = m_freeEntities.top();
+                m_freeEntities.pop();
+            }
+            else
+            {
+                m_entities.emplace_back(addr);
+                newEntityIndex = m_entities.size() - 1;
+            }
+            return Entity{ this, &m_componentTypeStorage, newEntityIndex, addr };
         };
 
         Entity getEntity(EntityId id)
@@ -55,38 +68,6 @@ namespace ecs
 
         void destroyEntity(EntityId id)
         {
-            // swap places with last entityId
-            auto aId = id;
-            auto bId = m_entities.size() - 1;
-            if (aId != bId)
-            {
-                // update the last entity to point to new index
-                {
-                    auto address = m_entities[bId];
-                    ComponentArcheTypeId archeTypeId = archeTypeIdFromEntityAddress(address);
-                    auto entityIndex = entityIndexFromEntityAddress(address);
-                    auto chunkIndex = chunkIndexFromEntityAddress(address);
-                    m_chunks[archeTypeId][chunkIndex]->entities()[entityIndex] = aId;
-                }
-
-                //ongelma on se että chunkkeja ei voi poistaa koska entity id:ssä on chunkki indexi.
-                //poista se entity id:stä ja lisää se entity listaan addressin lisäksi
-
-                // update the removed entity to point to last index
-                {
-                    auto address = m_entities[aId];
-                    ComponentArcheTypeId archeTypeId = archeTypeIdFromEntityAddress(address);
-                    auto entityIndex = entityIndexFromEntityAddress(address);
-                    auto chunkIndex = chunkIndexFromEntityAddress(address);
-                    m_chunks[archeTypeId][chunkIndex]->entities()[entityIndex] = bId;
-                }
-
-                // swap the addressing
-                std::swap(m_entities[aId], m_entities[bId]);
-
-                id = bId;
-            }
-
             // remove the entity from a chunk
             {
                 auto address = m_entities[id];
@@ -95,7 +76,7 @@ namespace ecs
                 auto chunkIndex = chunkIndexFromEntityAddress(address);
 
                 // swap the removed entity to last in chunk to avoid holes
-                auto& chunk = m_chunks[archeTypeId][chunkIndex];
+                auto chunk = m_chunks[archeTypeId].getChunk(chunkIndex);
                 auto chunkSize = chunk->size();
 
                 // if not already last
@@ -115,6 +96,70 @@ namespace ecs
 
                 possiblyFreeChunk(archeTypeId, chunkIndex, chunk);
             }
+            m_freeEntities.push(id);
+#if 0
+            // swap places with last entityId
+            auto aId = id;
+            auto bId = m_entities.size() - 1;
+            if (aId != bId)
+            {
+                // update the last entity to point to new index
+                {
+                    auto address = m_entities[bId];
+                    ComponentArcheTypeId archeTypeId = archeTypeIdFromEntityAddress(address);
+                    auto entityIndex = entityIndexFromEntityAddress(address);
+                    auto chunkIndex = chunkIndexFromEntityAddress(address);
+                    m_chunks[archeTypeId].getChunk(chunkIndex)->entities()[entityIndex] = aId;
+                }
+
+                //ongelma on se että chunkkeja ei voi poistaa koska entity id:ssä on chunkki indexi.
+                //poista se entity id:stä ja lisää se entity listaan addressin lisäksi
+
+                // update the removed entity to point to last index
+                {
+                    auto address = m_entities[aId];
+                    ComponentArcheTypeId archeTypeId = archeTypeIdFromEntityAddress(address);
+                    auto entityIndex = entityIndexFromEntityAddress(address);
+                    auto chunkIndex = chunkIndexFromEntityAddress(address);
+                    m_chunks[archeTypeId].getChunk(chunkIndex)->entities()[entityIndex] = bId;
+                }
+
+                // swap the addressing
+                std::swap(m_entities[aId], m_entities[bId]);
+
+                id = bId;
+            }
+
+            // remove the entity from a chunk
+            {
+                auto address = m_entities[id];
+                ComponentArcheTypeId archeTypeId = archeTypeIdFromEntityAddress(address);
+                auto entityIndex = entityIndexFromEntityAddress(address);
+                auto chunkIndex = chunkIndexFromEntityAddress(address);
+
+                // swap the removed entity to last in chunk to avoid holes
+                auto chunk = m_chunks[archeTypeId].getChunk(chunkIndex);
+                auto chunkSize = chunk->size();
+
+                // if not already last
+                if (entityIndex < chunkSize - 1)
+                {
+                    chunk->swap(entityIndex, chunkSize - 1);
+
+                    // update ecs -> chunk entity address for the entity that got moved from last position
+                    m_entities[chunk->entities()[entityIndex]] = createEntityAddress(
+                        entityIndex, chunkIndex, archeTypeId);
+
+                    entityIndex = chunkSize - 1;
+                }
+
+                // remove the entity from it's old chunk
+                chunk->free(entityIndex);
+
+                possiblyFreeChunk(archeTypeId, chunkIndex, chunk);
+            }
+            m_entities.pop_back();
+#endif
         };
 
         template<typename T, typename... Rest>
@@ -128,14 +173,13 @@ namespace ecs
     private:
         using ChunkId = int;
 
-        void updateArcheTypeStorage(ComponentArcheTypeId id, size_t reserveSpace = 0)
+        void updateArcheTypeStorage(ComponentArcheTypeId id)
         {
             if (id >= m_archeTypeCount)
             {
                 auto newSize = id + 1;
-                m_chunks.resize(newSize);
-                if (reserveSpace)
-                    m_chunks[newSize - 1].reserve(reserveSpace);
+                while (m_chunks.size() < newSize)
+                    m_chunks.emplace_back(ChunkAllocator(&m_chunkStorage, m_chunks.size()));
 #ifdef LOOK_FOR_PARTIAL_CHUNKS
                 m_chunkMask.resize(newSize);
 #endif
@@ -205,14 +249,14 @@ namespace ecs
 #ifdef PARALLEL_FOR_LOOP
                 std::for_each(
                     std::execution::par_unseq,
-                    m_chunks[archetype].begin(),
-                    m_chunks[archetype].end(),
+                    m_chunks[archetype].chunkVector().begin(),
+                    m_chunks[archetype].chunkVector().end(),
                     [&](auto& chunk)
 #else
                 for (auto& chunk : m_chunks[archetype])
 #endif
                 {
-                    if (!chunk->empty())
+                    if (chunk && !chunk->empty())
                     {
                         auto tuples = packComponentPointers<Args...>(*chunk);
 
@@ -317,8 +361,7 @@ namespace ecs
                     }
                 }
 
-                m_chunkStorage.freeChunk(archeTypeId, m_chunks[archeTypeId][chunkIndex]);
-                m_chunks[archeTypeId].erase(m_chunks[archeTypeId].begin() + chunkIndex);
+                m_chunks[archeTypeId].returnChunk(chunk, chunkIndex);
             }
             else if (!chunk->full())
             {
@@ -353,13 +396,13 @@ namespace ecs
             auto newEntityChunkIndex = chunkIndexFromEntityAddress(entity.entityAddress);
 
             // update chunk -> ecs binding
-            m_chunks[newArcheTypeId][newEntityChunkIndex]->entities()[newEntityIndex] = entity.entityId;
+            m_chunks[newArcheTypeId].getChunk(newEntityChunkIndex)->entities()[newEntityIndex] = entity.entityId;
 
             // if this entity was in some other archetype previously
             if (oldArcheTypeId != InvalidArcheTypeId)
             {
                 // swap the removed entity to last in chunk to avoid holes
-                auto& oldChunk = m_chunks[oldArcheTypeId][oldChunkIndex];
+                auto oldChunk = m_chunks[oldArcheTypeId].getChunk(oldChunkIndex);
                 auto chunkSize = oldChunk->size();
 
                 // if not already last
@@ -375,7 +418,7 @@ namespace ecs
                 }
 
                 // copy over values from the previous types
-                auto& newChunk = m_chunks[newArcheTypeId][newEntityChunkIndex];
+                auto newChunk = m_chunks[newArcheTypeId].getChunk(newEntityChunkIndex);
                 newChunk->copy(*oldChunk, oldEntityIndex, newEntityIndex, 1);
 
                 // remove the entity from it's old chunk
@@ -411,7 +454,7 @@ namespace ecs
 
             // next we'll check if there are chunks that have gotten more space
             // as a result of erasing some entity from them
-            for (auto notFull = m_partiallyFullChunkIds[archeTypeId].begin(); notFull != m_partiallyFullChunkIds[archeTypeId].end(); ++notFull)
+            for (auto notFull = m_partiallyFullChunkIds[archeTypeId].begin(); notFull != m_partiallyFullChunkIds[archeTypeId].end();)
             {
                 if (notFull->chunk->available())
                 {
@@ -424,7 +467,9 @@ namespace ecs
                         m_lastUsedChunk.id, archeTypeId);
                 }
                 else
+                {
                     notFull = m_partiallyFullChunkIds[archeTypeId].erase(notFull);
+                }
             }
 
             auto& chunkList = m_chunks[archeTypeId];
@@ -455,7 +500,7 @@ namespace ecs
 #endif
 
             // then we'll just create a new chunk
-            chunkList.emplace_back(m_chunkStorage.allocateChunk(archeTypeId));
+            auto newChunk = chunkList.getChunk();
 
 #ifdef LOOK_FOR_PARTIAL_CHUNKS
             // resize chunk mask
@@ -473,12 +518,12 @@ namespace ecs
             }
 #endif
 
-            m_lastUsedChunk.id = chunkList.size() - 1;
-            m_lastUsedChunk.chunk = chunkList[m_lastUsedChunk.id];
+            m_lastUsedChunk.id = newChunk.chunkIndex;
+            m_lastUsedChunk.chunk = newChunk.chunk;
             m_lastArcheTypeId = archeTypeId;
-            m_lastUsedChunkPerArcheType[archeTypeId].chunk = m_lastUsedChunk.chunk;
-            m_lastUsedChunkPerArcheType[archeTypeId].id = m_lastUsedChunk.id;
-            return createEntityAddress(m_lastUsedChunk.chunk->allocate(), m_lastUsedChunk.id, archeTypeId);
+            m_lastUsedChunkPerArcheType[archeTypeId].chunk = newChunk.chunk;
+            m_lastUsedChunkPerArcheType[archeTypeId].id = newChunk.chunkIndex;
+            return createEntityAddress(newChunk.chunk->allocate(), newChunk.chunkIndex, archeTypeId);
         }
 
         bool hasComponent(const Entity& entity, ComponentTypeId componentTypeId)
@@ -493,7 +538,7 @@ namespace ecs
             ComponentArcheTypeId currentArcheType = archeTypeIdFromEntityAddress(entity.entityAddress);
             auto chunkIndex = chunkIndexFromEntityAddress(entity.entityAddress);
 
-            return m_chunks[currentArcheType][chunkIndex]->componentDataPointer(componentTypeId);
+            return m_chunks[currentArcheType].getChunk(chunkIndex)->componentDataPointer(componentTypeId);
         }
 
         bool hasComponents(const Entity& entity, const std::vector<ComponentTypeId>& componentIds)
@@ -532,7 +577,7 @@ namespace ecs
             auto dst = data;
             for (auto&& archetype : archetypes)
             {
-                for (auto& chunk : m_chunks[archetype])
+                for (auto& chunk : m_chunks[archetype].chunkVector())
                 {
                     if (!chunk->empty())
                     {
@@ -565,9 +610,100 @@ namespace ecs
         }
 #endif
     private:
+        class ChunkAllocator
+        {
+        public:
+            ChunkAllocator()
+                : m_chunkMask{ 0 }
+                , m_available{ 0 }
+                , m_count{ 0 }
+                , m_archeTypeId{ InvalidArcheTypeId }
+                , m_chunkStorage{ nullptr }
+            {}
+
+            ChunkAllocator(ChunkStorage* chunkStorage, ComponentArcheTypeId archeTypeId)
+                : m_chunkMask{ 0 }
+                , m_available{ 0 }
+                , m_count{ 0 }
+                , m_archeTypeId{ archeTypeId }
+                , m_chunkStorage{ chunkStorage }
+            {}
+
+            ChunkAllocator(ChunkAllocator&&) = default;
+            ChunkAllocator& operator=(ChunkAllocator&&) = default;
+
+            ChunkAllocator(const ChunkAllocator&) = delete;
+            ChunkAllocator& operator=(const ChunkAllocator&) = delete;
+
+            struct NewChunk
+            {
+                Chunk* chunk;
+                uint64_t chunkIndex;
+            };
+
+            NewChunk getChunk()
+            {
+                if(m_available)
+                {
+                    auto nextAvailable = m_chunkMask.begin();
+                    ASSERT(nextAvailable != m_chunkMask.end(), "Chunk mask doesn't have free space but m_available says there is");
+                    m_chunkMask.clear(*nextAvailable);
+                    --m_available;
+                    m_chunks[*nextAvailable] = m_chunkStorage->allocateChunk(m_archeTypeId);
+                    ++m_count;
+                    return NewChunk{ m_chunks[*nextAvailable], *nextAvailable };
+                }
+                else
+                {
+                    uint64_t newIndex = m_chunks.size();
+                    m_chunks.emplace_back(m_chunkStorage->allocateChunk(m_archeTypeId));
+                    ++m_count;
+                    if(m_chunks.size() > m_chunkMask.sizeBits())
+                        m_chunkMask.resize(
+                            std::max(
+                                m_chunkMask.sizeBits() * 2u, 
+                                static_cast<unsigned long long>(1u)), true);
+
+                    m_chunkMask.clear(newIndex);
+                    return NewChunk{ m_chunks[newIndex], newIndex };
+                }
+            }
+
+            Chunk* getChunk(uint64_t chunkId)
+            {
+                return m_chunks[chunkId];
+            }
+
+            void returnChunk(Chunk* chunk, uint64_t chunkId)
+            {
+                --m_count;
+                m_chunkStorage->freeChunk(m_archeTypeId, m_chunks[chunkId]);
+                m_chunks[chunkId] = nullptr;
+                m_chunkMask.set(chunkId);
+                ++m_available;
+            }
+
+            size_t size() const
+            {
+                return m_count;
+            }
+
+            engine::vector<Chunk*>& chunkVector()
+            {
+                return m_chunks;
+            }
+        private:
+            engine::BitSetDynamic m_chunkMask;
+            uint64_t m_available;
+            uint64_t m_count;
+            ComponentArcheTypeId m_archeTypeId;
+            ChunkStorage* m_chunkStorage;
+            engine::vector<Chunk*> m_chunks;
+        };
+    private:
         friend class Entity;
         size_t m_archeTypeCount;
-        engine::vector<engine::vector<Chunk*>> m_chunks;
+        engine::vector<ChunkAllocator> m_chunks;
 #ifdef LOOK_FOR_PARTIAL_CHUNKS
         engine::vector<engine::BitSetDynamic> m_chunkMask;
 #endif
@@ -594,5 +730,6 @@ namespace ecs
         // two way connection between an EntityId and the entity data inside a chunk.
         // m_entities[EntityId] -> EntityAddress -> Chunk -> m_entityIds[EntityAddress.index] -> m_entities[EntityId]
         engine::vector<EntityAddress> m_entities;
+        std::stack<uint64_t> m_freeEntities;
 };
 }
