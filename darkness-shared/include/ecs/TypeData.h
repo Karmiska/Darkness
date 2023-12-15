@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <new>
 #include <memory>
+#include "tools/Debug.h"
 
 namespace ecs
 {
@@ -11,6 +12,7 @@ namespace ecs
     public:
         virtual ~TypeDataBase() {}
         virtual void* rawData() = 0;
+        virtual size_t elements() const = 0;
         virtual void swap(uint64_t a, uint64_t b) noexcept = 0;
         virtual void copy(TypeDataBase* src, uint64_t srcIndex, uint64_t dstIndex, size_t elements) noexcept = 0;
     };
@@ -49,17 +51,25 @@ namespace ecs
         T* data() { return m_data; }
         const T* data() const { return m_data; }
 
-        size_t elements() const { return m_elements; }
+        size_t elements() const override { return m_elements; }
 
         void swap(uint64_t a, uint64_t b) noexcept override
         {
+            ASSERT(a < elements());
+            ASSERT(b < elements());
             std::swap(m_data[a], m_data[b]);
         }
 
-        void copy(TypeDataBase* src, uint64_t srcIndex, uint64_t dstIndex, size_t elements) noexcept override
+        void copy(TypeDataBase* src, uint64_t srcIndex, uint64_t dstIndex, size_t _elements) noexcept override
         {
+            ASSERT(src != nullptr);
+            ASSERT(srcIndex < src->elements());
+            ASSERT(srcIndex + _elements <= src->elements());
+            ASSERT(dstIndex < elements());
+            ASSERT(dstIndex + _elements <= elements());
+
             TypeData<T>& srcCom = *static_cast<TypeData<T>*>(src);
-            for (int i = 0; i < elements; ++i)
+            for (int i = 0; i < _elements; ++i)
             {
                 m_data[dstIndex + i] = srcCom.m_data[srcIndex + i];
             }

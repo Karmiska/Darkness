@@ -68,6 +68,11 @@ namespace ecs
                 set);
         }
 
+        ArcheType archeType(const std::initializer_list<ComponentTypeId>& types)
+        {
+            return archeType(engine::vector<ComponentTypeId>(types));
+        }
+
         ArcheType archeType(ComponentArcheTypeId id)
         {
             return ArcheType(id, typeSetFromArcheType(id));

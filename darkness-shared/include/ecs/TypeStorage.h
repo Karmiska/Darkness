@@ -52,7 +52,7 @@ namespace ecs
         }
 
     private:
-        engine::vector<TypeInfo> m_typeInfoStorage;
+        static engine::vector<TypeInfo> m_typeInfoStorage;
 
     };
 
