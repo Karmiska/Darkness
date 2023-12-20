@@ -18,17 +18,21 @@ namespace ecs
         {
             TypeInfo(
                 ComponentTypeId _id,
+                size_t _typeSizeBytes,
+                size_t alignmentReq,
                 std::function<TypeDataBase*(void* ptr, size_t elements)> _create,
-                engine::vector<TypeInfo>& typeInfoStorage,
-                uint32_t _typeSizeBytes)
+                engine::vector<TypeInfo>& typeInfoStorage)
                 : id{ _id }
-                , create{ _create }
                 , typeSizeBytes{ _typeSizeBytes }
+                , alignment(alignmentReq)
+                , create{ _create }
+                
             {
                 typeInfoStorage.emplace_back(*this);
             }
             ComponentTypeId id;
-            uint32_t typeSizeBytes;
+            size_t typeSizeBytes;
+            size_t alignment;
             std::function<TypeDataBase*(void* ptr, size_t elements)> create;
         };
 
@@ -37,12 +41,13 @@ namespace ecs
         {
             static TypeInfo typeInfo(
                 GlobalComponentTypeId++, 
+                sizeof(T),
+                alignof(T),
                 [](void* ptr, size_t elements)->TypeDataBase*
                 {
                     return new TypeData<T>(static_cast<T*>(ptr), elements);
                 },
-                m_typeInfoStorage,
-                sizeof(T));
+                m_typeInfoStorage);
             return typeInfo.id;
         }
 

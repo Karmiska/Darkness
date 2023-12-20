@@ -20,83 +20,83 @@ namespace ecs
             size_t bytesAllocated = 0;
             while (bytesAllocated < PreallocatedChunkStorageSizeBytes)
             {
-                m_storageAllocations.emplace_back(new ChunkStorageAllocation{ ChunkStorageAllocationSize, ZeroChunkMemory });
+                m_storageAllocations.emplace_back(new ChunkStorageAllocation{ ChunkStorageAllocationSize, PreferredChunkSizeBytes, ZeroChunkMemory });
                 bytesAllocated += ChunkStorageAllocationSize;
             }
             if (m_storageAllocations.size() == 0)
-                m_storageAllocations.emplace_back(new ChunkStorageAllocation{ ChunkStorageAllocationSize, ZeroChunkMemory });
+                m_storageAllocations.emplace_back(new ChunkStorageAllocation{ ChunkStorageAllocationSize, PreferredChunkSizeBytes, ZeroChunkMemory });
         }
 
         Chunk* allocateChunk(ComponentArcheTypeId archeType)
         {
-            if (archeType >= m_freeChunks.size())
-                m_freeChunks.resize(archeType + 1);
-
-            auto& chunkList = m_freeChunks[archeType];
-            if (chunkList.size())
-            {
-                auto res = chunkList.back();
-                chunkList.pop_back();
-                res->m_fromStorageAllocation->allocate();
-                return res;
-            }
-
             return allocateNewChunk(archeType);
         }
 
         void freeChunk(ComponentArcheTypeId archeType, Chunk* chunk)
         {
-            ChunkStorageAllocation* chAlloc = chunk->m_fromStorageAllocation;
-            chAlloc->deallocate();
-            if (chAlloc->allocationCount() == 0)
+            StorageAllocation& chAlloc = chunk->m_fromStorageAllocation;
+            chAlloc.storage->deallocate(chAlloc.ptr);
+            if (chAlloc.storage->empty()) 
             {
-                std::erase_if(m_freeChunks[chunk->archeType()],
-                    [&](Chunk* tmpchunk)
+                // switch this loop to unordered_map
+                // or maybe allocate using placement new and use the pointer as index
+                for (int i = 0; i < m_storageAllocations.size(); ++i)
+                {
+                    if (m_storageAllocations[i] = chAlloc.storage)
                     {
-                        bool match = tmpchunk->m_fromStorageAllocation == chAlloc;
-                        if (match)
-                            delete tmpchunk;
-                        return match;
-                    });
-                delete chunk;
+                        m_storageAllocations.erase(m_storageAllocations.begin() + i);
+                        delete chAlloc.storage;
+
+                        if (m_storageAllocations.size() == 0)
+                            m_storageAllocations.emplace_back(new ChunkStorageAllocation{ ChunkStorageAllocationSize, PreferredChunkSizeBytes, ZeroChunkMemory });
+
+                        if (m_currentAllocationIndex >= m_storageAllocations.size())
+                        {
+                            m_currentAllocationIndex = m_storageAllocations.size()-1;
+                        }
+                        break;
+                    }
+                }
+                
             }
-            else
-                m_freeChunks[archeType].emplace_back(chunk);
+            delete chunk;
         }
 
     private:
         TypeStorage& m_componentTypeStorage;
         ArcheTypeStorage& m_archeTypeStorage;
 
-        void* getStorageAllocation(size_t bytes)
+        StorageAllocation getStorageAllocation()
         {
-            auto chunkAllocation = m_storageAllocations[m_currentAllocationIndex]->allocate(bytes);
+            auto chunkAllocation = m_storageAllocations[m_currentAllocationIndex]->allocate();
             if (!chunkAllocation)
             {
                 ++m_currentAllocationIndex;
                 if(m_currentAllocationIndex >= m_storageAllocations.size())
-                    m_storageAllocations.emplace_back(new ChunkStorageAllocation{ ChunkStorageAllocationSize, ZeroChunkMemory });
+                    m_storageAllocations.emplace_back(new ChunkStorageAllocation{ ChunkStorageAllocationSize, PreferredChunkSizeBytes, ZeroChunkMemory });
                 
-                chunkAllocation = m_storageAllocations[m_currentAllocationIndex]->allocate(bytes);
+                chunkAllocation = m_storageAllocations[m_currentAllocationIndex]->allocate();
             }
 
             ASSERT(chunkAllocation, "Failed to allocate chunk memory");
-            return chunkAllocation;
+            return { chunkAllocation, m_storageAllocations[m_currentAllocationIndex] };
         }
 
         Chunk* allocateNewChunk(ComponentArcheTypeId archeType)
         {
-            auto chunk = new Chunk(m_archeTypeStorage, archeType);
-            auto chunkBytes = (chunk->elementSizeBytes() * chunk->capacity()) + chunk->typePaddingSizeBytes() + (sizeof(EntityId) * chunk->capacity());
-            chunk->initialize(m_componentTypeStorage, getStorageAllocation(chunkBytes), chunkBytes);
-            chunk->m_fromStorageAllocation = m_storageAllocations[m_currentAllocationIndex];
-            return chunk;
+            auto archeTypeInfo = m_archeTypeStorage.archeTypeInfo(archeType);
+
+            return new Chunk(
+                m_componentTypeStorage, 
+                archeTypeInfo,
+                archeType, 
+                getStorageAllocation());
         }
 
     private:
         engine::vector<engine::vector<Chunk*>> m_freeChunks;
         engine::vector<ChunkStorageAllocation*> m_storageAllocations;
-        size_t m_currentAllocationIndex;
+        int m_currentAllocationIndex;
         std::mutex m_mutex;
     };
 }

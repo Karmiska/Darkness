@@ -32,3 +32,4 @@
 .\darkness-shadercompiler\src\inja.hpp
 .\darkness_sharpmake.vs2017.csproj
 .\darkness_sharpmake.vs2015.csproj
+.\tools\Sharpmake

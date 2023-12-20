@@ -8,9 +8,6 @@
 
 namespace ecs
 {
-    using EntityAddress = uint64_t;
-    using EntityId = uint64_t;
-
     inline uint64_t entityIndexFromEntityAddress(EntityAddress id)
     {
         return (id & EntityAddressEntityMask);

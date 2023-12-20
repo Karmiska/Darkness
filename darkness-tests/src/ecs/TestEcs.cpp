@@ -354,3 +354,11 @@ TEST(TestEcs, TestArcheTypeStorage)
     EXPECT_EQ(containerC.typeCount, 1);
     EXPECT_TRUE(containerC.set.get(typeBId));
 }
+
+TEST(TestEcs, TestChunk)
+{
+    TypeStorage typeStorage;
+    ArcheTypeStorage archeTypeStorage(typeStorage);
+
+
+}
