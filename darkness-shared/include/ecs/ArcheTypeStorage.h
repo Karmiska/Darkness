@@ -19,8 +19,8 @@
 namespace ecs
 {
     class ArcheTypeStorage;
-    bool ChunkElementCount(TypeStorage& componentTypeStorage, ArcheTypeStorage& archeTypeStorage, ComponentArcheTypeId archeType, size_t elements, size_t maxSize);
-    size_t ChunkElementCount(TypeStorage& componentTypeStorage, ArcheTypeStorage& archeTypeStorage, ComponentArcheTypeId archeType, size_t maxSize);
+    bool ChunkEntityCount(TypeStorage& componentTypeStorage, ArcheTypeStorage& archeTypeStorage, ComponentArcheTypeId archeType, size_t elements, size_t maxSize);
+    size_t ChunkEntityCount(TypeStorage& componentTypeStorage, ArcheTypeStorage& archeTypeStorage, ComponentArcheTypeId archeType, size_t maxSize);
 
     using ArcheTypeSet = engine::BitSet<MaximumEcsTypes>;
 
@@ -117,7 +117,7 @@ namespace ecs
                 if (m_archeTypes[i].set == set)
                     return i;
             m_archeTypes.emplace_back(ArcheTypeContainer{ set, archeTypeBytes(set), archeTypeTypeCount(set), 0 });
-            m_archeTypes[m_archeTypes.size() - 1].elementsInChunk = ChunkElementCount(m_componentTypeStorage, *this, m_archeTypes.size()-1, PreferredChunkSizeBytes);
+            m_archeTypes[m_archeTypes.size() - 1].elementsInChunk = ChunkEntityCount(m_componentTypeStorage, *this, m_archeTypes.size()-1, PreferredChunkSizeBytes);
             return m_archeTypes.size() - 1;
         }
 

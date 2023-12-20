@@ -2,53 +2,35 @@
 
 namespace ecs
 {
-    bool ChunkElementCount(TypeStorage& componentTypeStorage, ArcheTypeStorage& archeTypeStorage, ComponentArcheTypeId archeType, size_t elements, size_t maxSize)
+    bool ChunkEntityCount(TypeStorage& componentTypeStorage, const ArcheTypeStorage::ArcheTypeContainer& archeTypeInfo, size_t elements, size_t maxSize)
     {
-        auto archeTypeInfo = archeTypeStorage.archeTypeInfo(archeType);
-
         size_t bytesUsed = 0;
         for (auto&& type : archeTypeInfo.set)
         {
             auto typeInfo = componentTypeStorage.typeInfo(type);
-            auto minAlignment = std::max(typeInfo.alignment, ChunkDataAlignment);
-
-            bytesUsed = roundUpToMultiple(bytesUsed, minAlignment);
+            auto alignment = std::max(typeInfo.alignment, ChunkDataAlignment);
+            bytesUsed = roundUpToMultiple(bytesUsed, alignment);
             bytesUsed += typeInfo.typeSizeBytes * elements;
-            bytesUsed = roundUpToMultiple(bytesUsed, minAlignment);
         }
         bytesUsed += sizeof(EntityId) * elements;
         return bytesUsed <= maxSize;
     }
 
-    size_t ChunkElementCount(TypeStorage& componentTypeStorage, ArcheTypeStorage& archeTypeStorage, ComponentArcheTypeId archeType, size_t maxSize)
+    size_t ChunkEntityCount(TypeStorage& componentTypeStorage, ArcheTypeStorage& archeTypeStorage, ComponentArcheTypeId archeType, size_t maxSize)
     {
-        int left = 0;
-        int right = maxSize;
-        while (left < right)
+        auto archeTypeInfo = archeTypeStorage.archeTypeInfo(archeType);
+        size_t maxAlignmentBytes = 0;
+        for (auto&& type : archeTypeInfo.set)
         {
-            auto middle = left + ((right - left) / 2);
-            if (left == middle)
-                break;
-
-            if (ChunkElementCount(componentTypeStorage, archeTypeStorage, archeType, middle, maxSize))
-            {
-                left = middle;
-            }
-            else
-            {
-                right = middle;
-            }
+            auto typeInfo = componentTypeStorage.typeInfo(type);
+            auto alignment = std::max(typeInfo.alignment, ChunkDataAlignment) - 1; // no padding needed if full size alignment. hence -1
+            maxAlignmentBytes += alignment;
         }
 
-        if (ChunkElementCount(componentTypeStorage, archeTypeStorage, archeType, left + 1, maxSize))
-        {
-            ASSERT(false, "nope");
-        }
-        if (!ChunkElementCount(componentTypeStorage, archeTypeStorage, archeType, left, maxSize))
-        {
-            ASSERT(false, "nope again");
-        }
+        auto estimatedEntityCount = (maxSize - maxAlignmentBytes) / (archeTypeInfo.sizeBytes + sizeof(EntityId));
+        while (ChunkEntityCount(componentTypeStorage, archeTypeInfo, estimatedEntityCount, maxSize))
+            ++estimatedEntityCount;
 
-        return left;
+        return estimatedEntityCount - 1;
     }
 }

@@ -48,12 +48,11 @@ namespace ecs
             for (auto&& type : archeTypeInfo.set)
             {
                 auto typeInfo = componentTypeStorage.typeInfo(type);
-                auto minAlignment = std::max(typeInfo.alignment, ChunkDataAlignment);
+                auto alignment = std::max(typeInfo.alignment, ChunkDataAlignment);
 
-                ptr = roundUpToMultiple(ptr, minAlignment);
+                ptr = roundUpToMultiple(ptr, alignment);
                 m_componentData.emplace_back(typeInfo.create(reinterpret_cast<void*>(ptr), m_elements));
                 ptr += typeInfo.typeSizeBytes * m_elements;
-                ptr = roundUpToMultiple(ptr, minAlignment);
             }
 
             m_fromStorageAllocation = allocation;
