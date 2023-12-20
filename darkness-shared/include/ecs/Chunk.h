@@ -52,7 +52,7 @@ namespace ecs
 
                 ptr = roundUpToMultiple(ptr, alignment);
                 m_componentData.emplace_back(typeInfo.create(reinterpret_cast<void*>(ptr), m_elements));
-                ptr += typeInfo.typeSizeBytes * m_elements;
+                ptr += std::max(typeInfo.typeSizeBytes, typeInfo.alignment) * m_elements;
             }
 
             m_fromStorageAllocation = allocation;
