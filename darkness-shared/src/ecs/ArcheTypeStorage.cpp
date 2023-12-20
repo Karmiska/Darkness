@@ -10,7 +10,7 @@ namespace ecs
             auto typeInfo = componentTypeStorage.typeInfo(type);
             auto alignment = std::max(typeInfo.alignment, ChunkDataAlignment);
             bytesUsed = roundUpToMultiple(bytesUsed, alignment);
-            bytesUsed += typeInfo.typeSizeBytes * elements;
+            bytesUsed += std::max(typeInfo.typeSizeBytes, typeInfo.alignment) * elements;
         }
         bytesUsed += sizeof(EntityId) * elements;
         return bytesUsed <= maxSize;
@@ -20,14 +20,15 @@ namespace ecs
     {
         auto archeTypeInfo = archeTypeStorage.archeTypeInfo(archeType);
         size_t maxAlignmentBytes = 0;
+        size_t archeTypeSizeBytes = 0;
         for (auto&& type : archeTypeInfo.set)
         {
             auto typeInfo = componentTypeStorage.typeInfo(type);
-            auto alignment = std::max(typeInfo.alignment, ChunkDataAlignment) - 1; // no padding needed if full size alignment. hence -1
-            maxAlignmentBytes += alignment;
+            maxAlignmentBytes += std::max(typeInfo.alignment, ChunkDataAlignment) - 1; // no padding needed if full size alignment. hence -1
+            archeTypeSizeBytes += std::max(typeInfo.typeSizeBytes, typeInfo.alignment);
         }
 
-        auto estimatedEntityCount = (maxSize - maxAlignmentBytes) / (archeTypeInfo.sizeBytes + sizeof(EntityId));
+        auto estimatedEntityCount = (maxSize - maxAlignmentBytes) / (archeTypeSizeBytes + sizeof(EntityId));
         while (ChunkEntityCount(componentTypeStorage, archeTypeInfo, estimatedEntityCount, maxSize))
             ++estimatedEntityCount;
 
