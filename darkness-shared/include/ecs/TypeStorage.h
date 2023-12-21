@@ -17,7 +17,7 @@ namespace ecs
         struct TypeInfo
         {
             TypeInfo(
-                ComponentTypeId _id,
+                TypeId _id,
                 size_t _typeSizeBytes,
                 size_t alignmentReq,
                 std::function<TypeDataBase*(void* ptr, size_t elements)> _create,
@@ -30,14 +30,14 @@ namespace ecs
             {
                 typeInfoStorage.emplace_back(*this);
             }
-            ComponentTypeId id;
+            TypeId id;
             size_t typeSizeBytes;
             size_t alignment;
             std::function<TypeDataBase*(void* ptr, size_t elements)> create;
         };
 
         template<typename T>
-        ComponentTypeId typeId()
+        TypeId typeId()
         {
             static TypeInfo typeInfo(
                 GlobalComponentTypeId++, 
@@ -51,7 +51,7 @@ namespace ecs
             return typeInfo.id;
         }
 
-        const TypeInfo& typeInfo(ComponentTypeId id) const
+        const TypeInfo& typeInfo(TypeId id) const
         {
             return m_typeInfoStorage[id];
         }

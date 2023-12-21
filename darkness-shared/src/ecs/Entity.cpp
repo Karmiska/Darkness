@@ -3,7 +3,7 @@
 
 namespace ecs
 {
-    void Entity::addComponent(ComponentTypeId componentTypeId)
+    void Entity::addComponent(TypeId componentTypeId)
     {
         m_ecs->addComponent(*this, componentTypeId);
     }
@@ -13,7 +13,7 @@ namespace ecs
         m_ecs->addComponents(*this, typeIndexes);
     }
 
-    void Entity::addComponents(const ArcheTypeSet& typeIndexes, ComponentArcheTypeId id)
+    void Entity::addComponents(const ArcheTypeSet& typeIndexes, ArcheTypeId id)
     {
         m_ecs->addComponents(*this, typeIndexes, id);
     }
@@ -23,22 +23,22 @@ namespace ecs
         m_ecs->setComponents(*this, typeIndexes);
     }
 
-    void Entity::setComponents(ComponentArcheTypeId id)
+    void Entity::setComponents(ArcheTypeId id)
     {
         m_ecs->setComponents(*this, id);
     }
 
-    bool Entity::hasComponent(ComponentTypeId componentTypeId)
+    bool Entity::hasComponent(TypeId componentTypeId)
     {
         return m_ecs->hasComponent(*this, componentTypeId);
     }
 
-    void Entity::removeComponent(ComponentTypeId componentTypeId)
+    void Entity::removeComponent(TypeId componentTypeId)
     {
         m_ecs->removeComponent(*this, componentTypeId);
     }
 
-    void* Entity::component(ComponentTypeId componentTypeId)
+    void* Entity::component(TypeId componentTypeId)
     {
         return m_ecs->component(*this, componentTypeId);
     }

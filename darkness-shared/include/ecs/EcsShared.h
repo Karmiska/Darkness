@@ -9,11 +9,11 @@ namespace ecs
     using EntityAddress = uint64_t;
     using EntityId = uint64_t;
 
-    using ComponentTypeId = uint64_t;
-    using ComponentArcheTypeId = uint64_t;
-    const ComponentTypeId InvalidTypeId = std::numeric_limits<uint64_t>::max();
-    const ComponentArcheTypeId InvalidArcheTypeId = 0xffff;
-    static ComponentTypeId GlobalComponentTypeId = 0;
+    using TypeId = uint64_t;
+    using ArcheTypeId = uint64_t;
+    const TypeId InvalidTypeId = std::numeric_limits<uint64_t>::max();
+    const ArcheTypeId InvalidArcheTypeId = 0xffff;
+    static TypeId GlobalComponentTypeId = 0;
 
     constexpr uint64_t EntityAddressArcheTypeMask = 0xffff000000000000;
     constexpr uint64_t EntityAddressChunkMask = 0x0000ffffffff0000;
@@ -27,7 +27,7 @@ namespace ecs
     // one can avoid that by allocating large enough chunk storage allocation,
     // because when ChunkStorage is created, it creates a bunch of allocations in it's constructor
     // which is called by Ecs constructor. (so all memory can be allocated beforehand if need be)
-    constexpr bool ZeroChunkMemory = false;
+    constexpr bool ZeroChunkMemory = true;
     constexpr size_t ChunkStorageAllocationSize = 16ull * 1024ull * 1024ull;
     constexpr size_t PreallocatedChunkStorageSizeBytes = 0;// 5ull * 1024ull * 1024ull * 1024ull;
 

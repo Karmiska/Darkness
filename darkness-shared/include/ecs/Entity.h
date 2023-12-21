@@ -18,7 +18,7 @@ namespace ecs
         return (id & EntityAddressChunkMask) >> 16;
     };
 
-    inline ComponentArcheTypeId archeTypeIdFromEntityAddress(EntityAddress id)
+    inline ArcheTypeId archeTypeIdFromEntityAddress(EntityAddress id)
     {
         return (id & EntityAddressArcheTypeMask) >> 48;
     };
@@ -26,7 +26,7 @@ namespace ecs
     inline EntityAddress createEntityAddress(
         uint64_t index,
         uint64_t chunkIndex,
-        ComponentArcheTypeId archeType)
+        ArcheTypeId archeType)
     {
         return (archeType << 48) | (chunkIndex << 16) | index;
     };
@@ -53,7 +53,7 @@ namespace ecs
         EntityId entityId;
         EntityAddress entityAddress;
         
-        ComponentArcheTypeId archeType()
+        ArcheTypeId archeType()
         {
             return archeTypeIdFromEntityAddress(entityAddress);
         }
@@ -110,16 +110,16 @@ namespace ecs
             return *(ptr + entityIndexFromEntityAddress(entityAddress));
         }
 
-        void addComponent(ComponentTypeId componentTypeId);
+        void addComponent(TypeId componentTypeId);
         void addComponents(const ArcheTypeSet& typeIndexes);
-        void addComponents(const ArcheTypeSet& typeIndexes, ComponentArcheTypeId id);
+        void addComponents(const ArcheTypeSet& typeIndexes, ArcheTypeId id);
         void setComponents(const ArcheTypeSet& typeIndexes);
-        void setComponents(ComponentArcheTypeId id);
-        bool hasComponent(ComponentTypeId componentTypeId);
-        void removeComponent(ComponentTypeId componentTypeId);
-        void* component(ComponentTypeId componentTypeId);
+        void setComponents(ArcheTypeId id);
+        bool hasComponent(TypeId componentTypeId);
+        void removeComponent(TypeId componentTypeId);
+        void* component(TypeId componentTypeId);
 
-        bool hasComponents(const std::vector<ComponentTypeId>& componentIds)
+        bool hasComponents(const std::vector<TypeId>& componentIds)
         {
             for (auto&& id : componentIds)
                 if (!hasComponent(id))

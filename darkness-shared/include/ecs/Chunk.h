@@ -29,14 +29,55 @@ namespace ecs
     {
         
     public:
+        Chunk()
+            : m_elements{ 0 }
+            , m_componentTypeIds{}
+            , m_componentData{}
+            , m_entityIds{ nullptr }
+            , m_used{ 0 }
+            , m_fromStorageAllocation{}
+            , m_archeType{}
+        {}
+
+        Chunk(const Chunk&) = delete;
+        Chunk& operator=(const Chunk&) = delete;
+
+        Chunk(Chunk&& chunk) noexcept
+            : m_elements{ 0 }
+            , m_componentTypeIds{}
+            , m_componentData{}
+            , m_entityIds{ nullptr }
+            , m_used{ 0 }
+            , m_fromStorageAllocation{}
+            , m_archeType{}
+        {
+            std::swap(m_elements, chunk.m_elements);
+            std::swap(m_componentTypeIds, chunk.m_componentTypeIds);
+            std::swap(m_componentData, chunk.m_componentData);
+            std::swap(m_entityIds, chunk.m_entityIds);
+            std::swap(m_used, chunk.m_used);
+            std::swap(m_fromStorageAllocation, chunk.m_fromStorageAllocation);
+            std::swap(m_archeType, chunk.m_archeType);
+        }
+
+        Chunk& operator=(Chunk&& chunk) noexcept
+        {
+            std::swap(m_elements, chunk.m_elements);
+            std::swap(m_componentTypeIds, chunk.m_componentTypeIds);
+            std::swap(m_componentData, chunk.m_componentData);
+            std::swap(m_entityIds, chunk.m_entityIds);
+            std::swap(m_used, chunk.m_used);
+            std::swap(m_fromStorageAllocation, chunk.m_fromStorageAllocation);
+            std::swap(m_archeType, chunk.m_archeType);
+        }
+
         Chunk(
             TypeStorage& componentTypeStorage,
-            const ArcheTypeStorage::ArcheTypeContainer& archeTypeInfo,
-            ComponentArcheTypeId archeType,
+            const ArcheTypeStorage::ArcheTypeInfo& archeTypeInfo,
             StorageAllocation allocation)
             : m_used{ 0 }
             , m_fromStorageAllocation{ nullptr }
-            , m_archeType{ archeType }
+            , m_archeType{ archeTypeInfo.id }
         {
             m_componentTypeIds = archeTypeInfo.set;
             m_componentData.reserve(archeTypeInfo.typeCount);
@@ -54,6 +95,8 @@ namespace ecs
                 m_componentData.emplace_back(typeInfo.create(reinterpret_cast<void*>(ptr), m_elements));
                 ptr += std::max(typeInfo.typeSizeBytes, typeInfo.alignment) * m_elements;
             }
+
+            ASSERT(ptr <= reinterpret_cast<uintptr_t>(allocation.ptr) + PreferredChunkSizeBytes, "Wrote over the chunk allocation");
 
             m_fromStorageAllocation = allocation;
         }
@@ -86,7 +129,7 @@ namespace ecs
         uint64_t allocate()
         {
             auto res = m_used++;
-            ASSERT(res < m_elements+1, "wut?");
+            ASSERT(res < m_elements, "Tried to allocate more entities from Chunk that it has");
             return res;
         }
 
@@ -97,20 +140,15 @@ namespace ecs
             std::swap(m_entityIds[a], m_entityIds[b]);
         }
 
-        void free(uint64_t id)
+        void freeLast()
         {
             // this trategy only works if the entity being removed is always the last
             // (which it currently is, as entities getting removed are moved to last)
             --m_used;
         }
 
-        bool isSet(uint64_t id) const
-        {
-            return id < m_used;
-        }
-
         template<typename T>
-        typename std::remove_reference<T>::type* componentDataPointer(ComponentTypeId componentTypeId)
+        typename std::remove_reference<T>::type* componentDataPointer(TypeId componentTypeId)
         {
             int index = 0;
 
@@ -123,7 +161,7 @@ namespace ecs
             return nullptr;
         }
 
-        void* componentDataPointer(ComponentTypeId componentTypeId)
+        void* componentDataPointer(TypeId componentTypeId)
         {
             int index = 0; 
 
@@ -157,7 +195,7 @@ namespace ecs
                 m_entityIds[dstIndex + i] = srcChunk.m_entityIds[srcIndex + i];
         }
 
-        ComponentArcheTypeId archeType() const
+        ArcheTypeId archeType() const
         {
             return m_archeType;
         }
@@ -213,7 +251,7 @@ namespace ecs
     private:
         friend class ChunkStorage;
         StorageAllocation m_fromStorageAllocation;
-        ComponentArcheTypeId m_archeType;
+        ArcheTypeId m_archeType;
     };
     
 }

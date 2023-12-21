@@ -23,6 +23,7 @@ namespace ecs
             , m_chunkSizeBytes{ chunkSizeBytes }
             , m_used{}
         {
+            ASSERT(bytes % chunkSizeBytes == 0, "ChunkStorageAllocation bytes needs to be a multiple of chunkSizeBytes");
             if (m_allocation && clear)
                 memset(m_allocation, 0, bytes);
             m_used.resize(m_allocationCount, true);

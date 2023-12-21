@@ -2,7 +2,7 @@
 
 namespace ecs
 {
-    bool ChunkEntityCount(TypeStorage& componentTypeStorage, const ArcheTypeStorage::ArcheTypeContainer& archeTypeInfo, size_t elements, size_t maxSize)
+    bool ChunkEntityCount(TypeStorage& componentTypeStorage, const ArcheTypeStorage::ArcheTypeInfo& archeTypeInfo, size_t elements, size_t maxSize)
     {
         size_t bytesUsed = 0;
         for (auto&& type : archeTypeInfo.set)
@@ -16,7 +16,7 @@ namespace ecs
         return bytesUsed <= maxSize;
     }
 
-    size_t ChunkEntityCount(TypeStorage& componentTypeStorage, ArcheTypeStorage& archeTypeStorage, ComponentArcheTypeId archeType, size_t maxSize)
+    size_t ChunkEntityCount(TypeStorage& componentTypeStorage, ArcheTypeStorage& archeTypeStorage, ArcheTypeId archeType, size_t maxSize)
     {
         auto archeTypeInfo = archeTypeStorage.archeTypeInfo(archeType);
         size_t maxAlignmentBytes = 0;

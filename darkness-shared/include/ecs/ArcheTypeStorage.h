@@ -19,8 +19,7 @@
 namespace ecs
 {
     class ArcheTypeStorage;
-    bool ChunkEntityCount(TypeStorage& componentTypeStorage, ArcheTypeStorage& archeTypeStorage, ComponentArcheTypeId archeType, size_t elements, size_t maxSize);
-    size_t ChunkEntityCount(TypeStorage& componentTypeStorage, ArcheTypeStorage& archeTypeStorage, ComponentArcheTypeId archeType, size_t maxSize);
+    size_t ChunkEntityCount(TypeStorage& componentTypeStorage, ArcheTypeStorage& archeTypeStorage, ArcheTypeId archeType, size_t maxSize);
 
     using ArcheTypeSet = engine::BitSet<MaximumEcsTypes>;
 
@@ -32,17 +31,17 @@ namespace ecs
             , m_typeSet{}
         {}
 
-        ArcheType(ComponentArcheTypeId id, ArcheTypeSet typeSet)
+        ArcheType(ArcheTypeId id, ArcheTypeSet typeSet)
             : m_id{ id }
             , m_typeSet{ typeSet }
         {}
 
-        ComponentArcheTypeId id() const
+        ArcheTypeId id() const
         {
             return m_id;
         }
 
-        bool contains(ComponentTypeId typeId) const
+        bool contains(TypeId typeId) const
         {
             return m_typeSet.get(typeId);
         }
@@ -53,7 +52,7 @@ namespace ecs
         }
 
     private:
-        ComponentArcheTypeId m_id;
+        ArcheTypeId m_id;
         ArcheTypeSet m_typeSet;
     };
 
@@ -64,7 +63,7 @@ namespace ecs
             : m_componentTypeStorage{ componentTypeStorage }
         {}
 
-        ArcheType archeType(const engine::vector<ComponentTypeId>& types)
+        ArcheType archeType(const engine::vector<TypeId>& types)
         {
             auto set = archeTypeSet(types);
             return ArcheType(
@@ -72,12 +71,12 @@ namespace ecs
                 set);
         }
 
-        ArcheType archeType(const std::initializer_list<ComponentTypeId>& types)
+        ArcheType archeType(const std::initializer_list<TypeId>& types)
         {
-            return archeType(engine::vector<ComponentTypeId>(types));
+            return archeType(engine::vector<TypeId>(types));
         }
 
-        ArcheType archeType(ComponentArcheTypeId id) const
+        ArcheType archeType(ArcheTypeId id) const
         {
             return ArcheType(id, typeSetFromArcheType(id));
         }
@@ -87,7 +86,7 @@ namespace ecs
             return ArcheType(archeTypeIdFromSet(set), set);
         }
 
-        ArcheType archeType(ComponentArcheTypeId id, ComponentTypeId typeId)
+        ArcheType archeType(ArcheTypeId id, TypeId typeId)
         {
             if (id != InvalidArcheTypeId)
             {
@@ -103,7 +102,7 @@ namespace ecs
             }
         }
 
-        ArcheTypeSet archeTypeSet(const engine::vector<ComponentTypeId>& types) const
+        ArcheTypeSet archeTypeSet(const engine::vector<TypeId>& types) const
         {
             ArcheTypeSet set;
             for (auto& t : types)
@@ -111,47 +110,48 @@ namespace ecs
             return set;
         }
 
-        ComponentArcheTypeId archeTypeIdFromSet(const ArcheTypeSet& set)
+        ArcheTypeId archeTypeIdFromSet(const ArcheTypeSet& set)
         {
             for (int i = 0; i < m_archeTypes.size(); ++i)
                 if (m_archeTypes[i].set == set)
                     return i;
-            m_archeTypes.emplace_back(ArcheTypeContainer{ set, archeTypeBytes(set), archeTypeTypeCount(set), 0 });
+            m_archeTypes.emplace_back(ArcheTypeInfo{ m_archeTypes.size(), set, archeTypeBytes(set), archeTypeTypeCount(set), 0});
             m_archeTypes[m_archeTypes.size() - 1].elementsInChunk = ChunkEntityCount(m_componentTypeStorage, *this, m_archeTypes.size()-1, PreferredChunkSizeBytes);
             return m_archeTypes.size() - 1;
         }
 
-        ArcheTypeSet typeSetFromArcheType(ComponentArcheTypeId id) const
+        ArcheTypeSet typeSetFromArcheType(ArcheTypeId id) const
         {
             return m_archeTypes[id].set;
         }
 
-        engine::vector<ComponentTypeId> typeIdVectorFromArcheType(ComponentArcheTypeId id) const
+        engine::vector<TypeId> typeIdVectorFromArcheType(ArcheTypeId id) const
         {
-            engine::vector<ComponentTypeId> res;
+            engine::vector<TypeId> res;
             for (auto&& t : m_archeTypes[id].set)
                 res.emplace_back(t);
             return res;
         }
 
-        engine::vector<ComponentArcheTypeId> archeTypesThatContain(const ArcheTypeSet& types) const
+        engine::vector<ArcheTypeId> archeTypesThatContain(const ArcheTypeSet& types) const
         {
-            engine::vector<ComponentArcheTypeId> res;
+            engine::vector<ArcheTypeId> res;
             for (int i = 0; i < m_archeTypes.size(); ++i)
                 if ((m_archeTypes[i].set & types) == types)
                     res.emplace_back(i);
             return res;
         }
 
-        struct ArcheTypeContainer
+        struct ArcheTypeInfo
         {
+            ArcheTypeId id;
             const ArcheTypeSet set;
             const size_t sizeBytes;
             const size_t typeCount;
             size_t elementsInChunk;
         };
 
-        ArcheTypeContainer archeTypeInfo(ComponentArcheTypeId id) const
+        ArcheTypeInfo archeTypeInfo(ArcheTypeId id) const
         {
             return m_archeTypes[id];
         }
@@ -173,6 +173,6 @@ namespace ecs
         }
 
         TypeStorage& m_componentTypeStorage;
-        engine::vector<ArcheTypeContainer> m_archeTypes;
+        engine::vector<ArcheTypeInfo> m_archeTypes;
     };
 }

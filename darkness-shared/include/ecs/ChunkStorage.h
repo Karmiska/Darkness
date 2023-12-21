@@ -11,9 +11,9 @@ namespace ecs
     {
     public:
         ChunkStorage(
-            TypeStorage& componentTypeStorage,
+            TypeStorage& typeStorage,
             ArcheTypeStorage& archeTypeStorage)
-            : m_componentTypeStorage{ componentTypeStorage }
+            : m_typeStorage{ typeStorage }
             , m_archeTypeStorage{ archeTypeStorage }
             , m_currentAllocationIndex{ 0 }
         {
@@ -27,12 +27,12 @@ namespace ecs
                 m_storageAllocations.emplace_back(new ChunkStorageAllocation{ ChunkStorageAllocationSize, PreferredChunkSizeBytes, ZeroChunkMemory });
         }
 
-        Chunk* allocateChunk(ComponentArcheTypeId archeType)
+        Chunk* allocateChunk(ArcheTypeId archeType)
         {
             return allocateNewChunk(archeType);
         }
 
-        void freeChunk(ComponentArcheTypeId archeType, Chunk* chunk)
+        void freeChunk(ArcheTypeId archeType, Chunk* chunk)
         {
             StorageAllocation& chAlloc = chunk->m_fromStorageAllocation;
             chAlloc.storage->deallocate(chAlloc.ptr);
@@ -63,7 +63,7 @@ namespace ecs
         }
 
     private:
-        TypeStorage& m_componentTypeStorage;
+        TypeStorage& m_typeStorage;
         ArcheTypeStorage& m_archeTypeStorage;
 
         StorageAllocation getStorageAllocation()
@@ -82,19 +82,17 @@ namespace ecs
             return { chunkAllocation, m_storageAllocations[m_currentAllocationIndex] };
         }
 
-        Chunk* allocateNewChunk(ComponentArcheTypeId archeType)
+        Chunk* allocateNewChunk(ArcheTypeId archeType)
         {
             auto archeTypeInfo = m_archeTypeStorage.archeTypeInfo(archeType);
 
             return new Chunk(
-                m_componentTypeStorage, 
+                m_typeStorage,
                 archeTypeInfo,
-                archeType, 
                 getStorageAllocation());
         }
 
     private:
-        engine::vector<engine::vector<Chunk*>> m_freeChunks;
         engine::vector<ChunkStorageAllocation*> m_storageAllocations;
         int m_currentAllocationIndex;
         std::mutex m_mutex;
