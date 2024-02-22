@@ -22,7 +22,8 @@ namespace ecs
     struct StorageAllocation
     {
         void* ptr;
-        ChunkStorageAllocation* storage;
+        size_t chunkIndex;
+        size_t storageIndex;
     };
 
     class Chunk

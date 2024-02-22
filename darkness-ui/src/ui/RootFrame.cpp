@@ -160,7 +160,7 @@ namespace ui
 		if (ui::dragFrame != nullptr)
 		{
 			auto rootFrame = translateTowardsRoot(messageFrame, point);
-			ui::UiPoint trans;
+			ui::UiPoint trans{};
 			getTranslationToChild(rootFrame, dynamic_cast<Frame*>(ui::dragFrame), trans);
 			return { { dynamic_cast<Frame*>(ui::dragFrame), { point.x - trans.x, point.y - trans.y } } };
 

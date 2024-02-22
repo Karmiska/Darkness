@@ -831,8 +831,8 @@ namespace engine
     {
         static constexpr unsigned long EndIteratorValue = 64;
     public:
-        BitSet()
-            : m_data{ 0u }
+        BitSet(uint64_t value = 0u)
+            : m_data{ value }
         {}
 
         BitSet(const BitSet&) = default;
