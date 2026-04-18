@@ -1,5 +1,6 @@
 #include "engine/FrameCpuCapturer.h"
 #include "engine/graphics/CommandList.h"
+#include <chrono>
 
 namespace engine
 {

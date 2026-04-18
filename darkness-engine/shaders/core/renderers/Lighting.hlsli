@@ -90,8 +90,8 @@ uint performLighting(
 
 			float NdotL = max(dot(N, L), 0.0);
 			float3 directContrib = (kD * albedoColor / PI + specular) * radiance * NdotL;
-			Lo += directContrib;
-		}
+            Lo += directContrib;
+        }
 		else if (lightType[lightIndex] == 1)
 		{
 			// spot light

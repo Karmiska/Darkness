@@ -4,7 +4,7 @@
 #include <bitset>
 
 
-TEST(TestBitSetDynamic, BitSetDynamicIterator)
+TEST(TestBitSet, BitSetDynamicIterator)
 {
     // check that empty bitset works
     {
